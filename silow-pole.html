@@ -1,0 +1,446 @@
+﻿<html>
+
+<head>
+<title>Силовое поле на шейдерах</title>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<script type="text/javascript" src="lib/webgl-debug.js"></script>
+<script type="text/javascript" src="lib/webgl-utils.js"></script>
+<script type="text/javascript" src="lib/gl-matrix-min.js"></script>
+<script type="text/javascript" src="lib/jquery-2.0.3.min.js"></script>
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+	
+	
+	//	максимальное число зарядов
+	const int max_num_Q = 16;
+	
+	
+	//	размер карты
+	uniform vec2 mSZ;
+	
+	//	заряды на карте
+	uniform vec4 mQ[ max_num_Q ];
+	
+	//	кол-во зарядов
+	uniform int num_Q;
+
+	
+	varying vec2 vTexcoord;
+	
+	
+	vec4 phi2vec4(float phi)
+	{
+			vec4 color;
+			if (phi>0.0)
+			{
+					if(phi>1.0)
+							color = vec4(1.0,1.0-1.0/phi,0.0,1.0);
+					else    color = vec4(phi,0.0,0.0,1.0);
+							
+			}
+			else
+			{
+					if(phi<-1.0)
+							color = vec4(0.0,1.0+1.0/phi,1.0,1.0);
+					else
+							color = vec4(0.0,0.0,-phi,1.0);
+							
+			}               
+			return color;
+	}
+
+    void main(void) {
+		
+		vec2 pos = (vTexcoord - vec2(0.5)) * mSZ;
+		
+		float phi = 0.0;
+		
+		for( int i=0; i < max_num_Q; ++i){
+		
+			if( i >= num_Q )
+				break;
+				
+			phi += mQ[i].z / distance( pos, mQ[i].xy );
+			
+		}
+	
+		gl_FragColor = phi2vec4(phi);
+		//gl_FragColor = vec4(vTexcoord,0.0,1.0);
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+	attribute vec2 aVertexTexcoord;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+
+	varying vec2 vTexcoord;
+
+    void main(void) {
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+		vTexcoord = aVertexTexcoord;
+    }
+</script>
+
+
+<script type="text/javascript">
+$(function(){
+    var gl;
+	
+	function throwOnGLError(err, funcName, args) {
+	  throw WebGLDebugUtils.glEnumToString(err) + " was caused by call to: " + funcName;
+	};
+	
+	function logGLCall(functionName, args) {   
+		console.log("gl." + functionName + "(" + 
+			WebGLDebugUtils.glFunctionArgsToString(functionName, args) + ")");   
+	} 
+	
+	function validateNoneOfTheArgsAreUndefined(functionName, args) {
+	  for (var ii = 0; ii < args.length; ++ii) {
+		if (args[ii] === undefined) {
+		  console.error("undefined passed to gl." + functionName + "(" +
+						 WebGLDebugUtils.glFunctionArgsToString(functionName, args) + ")");
+		}
+	  }
+	}
+	
+	function logAndValidate(functionName, args) {
+	   logGLCall(functionName, args);
+	   validateNoneOfTheArgsAreUndefined (functionName, args);
+	}
+
+    function initGL(canvas) {
+	
+        try {
+			gl = canvas.getContext("experimental-webgl");
+			gl = WebGLDebugUtils.makeDebugContext(gl, throwOnGLError, logAndValidate);
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+        } catch (e) {
+        }
+        if (!gl) {
+            alert("Could not initialise WebGL, sorry :-(");
+        }
+    }
+
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+
+    var shaderProgram;
+
+    function initShaders() {
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+
+        gl.useProgram(shaderProgram);
+
+        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+		
+		shaderProgram.vertexTexcoordAttribute = gl.getAttribLocation(shaderProgram, "aVertexTexcoord");
+		gl.enableVertexAttribArray(shaderProgram.vertexTexcoordAttribute);
+
+
+        shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+		shaderProgram.mSZUniform = gl.getUniformLocation(shaderProgram, "mSZ");
+		shaderProgram.mQUniform = gl.getUniformLocation(shaderProgram, "mQ");
+		shaderProgram.num_QUniform = gl.getUniformLocation(shaderProgram, "num_Q");
+    }
+
+
+    var mvMatrix = mat4.create();
+    var mvMatrixStack = [];
+    var pMatrix = mat4.create();
+	
+	var map = {
+		mSZ			: vec2.fromValues( 0, 0 ),
+		mQ			: [],
+		sel_q		: null,
+		sel_offs	: vec2.fromValues( 0, 0 )
+	};
+
+    function mvPushMatrix() {
+        var copy = mat4.create();
+        mat4.copy(copy,mvMatrix);
+        mvMatrixStack.push(copy);
+    }
+
+    function mvPopMatrix() {
+        if (mvMatrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        mvMatrix = mvMatrixStack.pop();
+    }
+
+
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+		gl.uniform2fv(shaderProgram.mSZUniform, map.mSZ);
+		gl.uniform1i(shaderProgram.num_QUniform, map.mQ.length);
+		for( var i=0; i < map.mQ.length; ++i){
+			gl.uniform4fv(gl.getUniformLocation(shaderProgram, "mQ["+i+"]"), map.mQ[i]);
+		}
+    }
+
+
+    function degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+
+    var squareVertexPositionBuffer;
+	var squareTexcoordBuffer;
+	var squareIndicesBuffer;
+
+    function initBuffers() {
+		var hw = 0.5 * gl.viewportWidth;
+		var hh = 0.5 * gl.viewportHeight;
+	
+        squareVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        vertices = [
+			-hw,	-hh,	0.0,
+			+hw,	-hh,	0.0,
+			+hw,	+hh,	0.0,
+			-hw,	+hh,	0.0,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        squareVertexPositionBuffer.itemSize = 3;
+        squareVertexPositionBuffer.numItems = 4;
+		
+		
+		squareTexcoordBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
+        texcoords = [
+			0.0, 0.0,
+			1.0, 0.0,
+			1.0, 1.0,
+			0.0, 1.0,
+		];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
+		squareTexcoordBuffer.itemSize = 2;
+        squareTexcoordBuffer.numItems = 4;
+		
+		
+		squareIndicesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
+		indices = [
+			0,1,2,
+			0,2,3
+		];
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+		squareIndicesBuffer.num = 6;
+    }
+
+    var rTri = 0;
+    var rSquare = 0;
+
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+		mat4.ortho(pMatrix, -0.5*gl.viewportWidth, 0.5*gl.viewportWidth, -0.5*gl.viewportHeight, 0.5*gl.viewportHeight, 0.1, 100.0 );
+
+        mat4.identity(mvMatrix);
+		
+		//mat4.scale(mvMatrix, [50.0, 50.0, 1.0]);
+
+        mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, -10.0]);
+
+
+        mvPushMatrix();
+        mat4.rotate(mvMatrix, mvMatrix, degToRad(rSquare), [1, 0, 0]);
+		
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexTexcoordAttribute, squareTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        setMatrixUniforms();
+		gl.drawElements(gl.TRIANGLES, squareIndicesBuffer.num, gl.UNSIGNED_SHORT, 0);
+
+        mvPopMatrix();
+    }
+
+
+    var lastTime = 0;
+
+    function animate() {
+        var timeNow = new Date().getTime();
+        if (lastTime != 0) {
+            var elapsed = timeNow - lastTime;
+
+            //rTri += (90 * elapsed) / 1000.0;
+            //rSquare += (75 * elapsed) / 1000.0;
+			
+        }
+        lastTime = timeNow;
+    }
+
+
+    function tick() {
+        requestAnimFrame(tick);
+        drawScene();
+        animate();
+    }
+
+
+    function webGLStart() {
+        var canvas = document.getElementById("shader-canvas");
+        initGL(canvas);
+        initShaders()
+        initBuffers();
+		
+		vec2.set( map.mSZ, canvas.width, canvas.height );
+		
+		//map.mQ.push( vec4.fromValues(0,0,25,0) );
+		//map.mQ.push( vec4.fromValues(-250,0,-25,0) );
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+
+        tick();
+    }
+	
+	
+	$('#shader-canvas')
+	.mousedown(function(e) {
+		var position = $(this).position();
+		var x = e.clientX - 0.5 * map.mSZ[0] - position.left;
+		var y = (map.mSZ[1] - e.clientY) - 0.5 * map.mSZ[1] + position.top;
+		var p = vec2.fromValues( x, y );
+		
+		var q = ($('#radio_plus:checked').val() == "on") - ($('#radio_minus:checked').val() == "on");
+		var dq = 25 * q;
+		
+		map.sel_q = null;
+		
+		for( var i=0; i<map.mQ.length; ++i ){
+			var qp = vec2.fromValues( map.mQ[i][0], map.mQ[i][1] );
+			if( vec2.distance( p, qp ) < 15 ){
+				map.sel_q = i;
+				vec2.sub( map.sel_offs, qp, p );
+				break;
+			}
+		}
+		
+		
+		if( map.sel_q !== null ){
+			//return;
+			map.mQ[ map.sel_q ][2] += dq;
+		}else{
+			map.mQ.push( vec4.fromValues( x, y, dq, 0 ) );
+		}
+		
+			
+	})
+	.mouseup(function(e) {
+		map.sel_q = null;
+	})
+	.mousemove(function(e){
+		if( map.sel_q !== null ){
+			var position = $(this).position();
+			var x = e.clientX - 0.5 * map.mSZ[0] - position.left;
+			var y = (map.mSZ[1] - e.clientY) - 0.5 * map.mSZ[1] + position.top;
+			var p = vec2.fromValues( x, y );
+			var qp = vec2.create();
+			vec2.add( qp, p, map.sel_offs );
+			vec2.copy( map.mQ[ map.sel_q ], qp );
+		}
+	})
+
+	
+	$('#map_clear').click(function(){
+		map.mQ = [];
+	});
+	
+	
+	function delete_current_q(){
+		if( map.sel_q !== null ){
+			map.mQ.splice( map.sel_q, 1 );
+			map.sel_q = null;
+		}
+	}
+	
+	
+	$(document)	
+	.keydown(function(e){
+		if( e.which == 46 )
+			delete_current_q();
+	})
+	
+	$('#q_delete').click(function(){
+		delete_current_q();
+	})
+	
+	webGLStart();
+
+});
+</script>
+
+</head>
+
+
+<body>
+    <canvas id="shader-canvas" style="border: none;" width="1024" height="768"></canvas>
+	<div>
+		<label><input type="radio" name="q" id="radio_plus"  checked="checked" />+25</label>
+		<label><input type="radio" name="q" />0</label>
+		<label><input type="radio" name="q" id="radio_minus"  />-25</label>
+		<input type="button" id="map_clear" value="clear"/>
+		<input type="button" id="q_delete" value="delete"/>
+	</div>
+</body>
+
+</html>
