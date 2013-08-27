@@ -1,4 +1,4 @@
 silow-pole
 ==========
 
-Electro-staticheskoe Silowoe Pole Ot Zarjadow (Electric Field Strength)
+Электростатическое поле от точечных зарядов, на шейдерах (Electric Field Strength)
