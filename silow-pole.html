@@ -342,6 +342,8 @@ $(function(){
 		var can = $(canvas);
 		
 		vec2.set( map.mSZ, can.width(), can.height() );
+		canvas.width = map.mSZ[0];
+		canvas.height = map.mSZ[1];
 		
         initGL(canvas);
         initShaders()
@@ -349,8 +351,8 @@ $(function(){
 		
 
 		
-		//map.mQ.push( vec4.fromValues(0,0,25,0) );
-		//map.mQ.push( vec4.fromValues(-250,0,-25,0) );
+		map.mQ.push( vec4.fromValues(20,15,1000,0) );
+		map.mQ.push( vec4.fromValues(-20,0,-1000,0) );
 
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
@@ -430,6 +432,9 @@ $(function(){
 			
 		var can = $('#shader-canvas');
 		vec2.set( map.mSZ, can.width(), can.height() );
+		
+		canvas.width = map.mSZ[0];
+		canvas.height = map.mSZ[1];
 		
 		gl.viewportWidth = map.mSZ[0];
         gl.viewportHeight = map.mSZ[1];
