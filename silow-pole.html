@@ -7,6 +7,7 @@
 <script type="text/javascript" src="lib/webgl-utils.js"></script>
 <script type="text/javascript" src="lib/gl-matrix-min.js"></script>
 <script type="text/javascript" src="lib/jquery-2.0.3.min.js"></script>
+<!--<script type="text/javascript" src="lib/jquery.mobile-1.3.2.min.js"></script>-->
 <script id="shader-fs" type="x-shader/x-fragment">
     precision mediump float;
 	
@@ -117,8 +118,8 @@ $(function(){
         try {
 			gl = canvas.getContext("experimental-webgl");
 			gl = WebGLDebugUtils.makeDebugContext(gl, throwOnGLError, logAndValidate);
-            gl.viewportWidth = canvas.width;
-            gl.viewportHeight = canvas.height;
+            gl.viewportWidth = map.mSZ[0];
+            gl.viewportHeight = map.mSZ[1];
         } catch (e) {
         }
         if (!gl) {
@@ -338,11 +339,15 @@ $(function(){
 
     function webGLStart() {
         var canvas = document.getElementById("shader-canvas");
+		var can = $(canvas);
+		
+		vec2.set( map.mSZ, can.width(), can.height() );
+		
         initGL(canvas);
         initShaders()
         initBuffers();
 		
-		vec2.set( map.mSZ, canvas.width, canvas.height );
+
 		
 		//map.mQ.push( vec4.fromValues(0,0,25,0) );
 		//map.mQ.push( vec4.fromValues(-250,0,-25,0) );
@@ -414,10 +419,22 @@ $(function(){
 	}
 	
 	
-	$(document)	
+	$(window)
 	.keydown(function(e){
 		if( e.which == 46 )
 			delete_current_q();
+	})
+	.resize(function(e){
+		if( !gl )
+			return;
+			
+		var can = $('#shader-canvas');
+		vec2.set( map.mSZ, can.width(), can.height() );
+		
+		gl.viewportWidth = map.mSZ[0];
+        gl.viewportHeight = map.mSZ[1];
+		
+		initBuffers();
 	})
 	
 	$('#q_delete').click(function(){
@@ -428,14 +445,31 @@ $(function(){
 
 });
 </script>
-
+<style type="text/css">
+html, body, canvas, div, label, input{ 
+	padding:0; margin:0; border: none;
+}
+html, body, canvas { 
+	width: 100%;
+	height: 100%;
+}
+div#control-panel { 
+	float: left;
+	position: absolute; 
+    top: 15px;
+    left: 15px;
+	width: 200px;
+	heght: 100px;
+	background: #fff;
+}
+</style>
 </head>
 
 
 <body>
-    <canvas id="shader-canvas" style="border: none;" width="1024" height="768"></canvas>
-	<div>
-		<label><input type="radio" name="q" id="radio_plus"  checked="checked" />+25</label>
+    <canvas id="shader-canvas"></canvas>
+	<div id="control-panel">
+		<label><input type="radio" name="q" id="radio_plus" checked="checked" />+25</label>
 		<label><input type="radio" name="q" />0</label>
 		<label><input type="radio" name="q" id="radio_minus"  />-25</label>
 		<input type="button" id="map_clear" value="clear"/>
