@@ -789,73 +789,79 @@ $(function(){
 
 });
 </script>
+<style type="text/css">
+div.inline{
+	margin: 0;
+	display: inline-block;
+	min-width: 100%;
+}
+
+div.inline_flip{
+	display: inline-block;
+	margin: 0;
+	padding: 0;
+}
+
+
+
+
+@media all and (min-width: 40em){
+	div.inline{ min-width: 20em; }
+	
+	div.inline_flip{
+		position: relative;
+		top: -0.5em;
+	}
+	
+	.up{
+		position: relative;
+		top: -0.5em;
+	}
+
+	@media all and (min-width: 80em){
+		div.inline{ min-width: 60em; }
+	}
+	
+
+	@media all and (min-width: 120em){
+		div.inline{ min-width: 100em; }
+	}
+	
+}
+.nopad{
+	padding:  0;
+}
+</style>
 </head>
 <body>
 <!-- Home -->
 <div data-role="page" id="page1">
-    <div data-theme="a" data-role="header" id="hdr">
-        <h3>
-            Silow-Pole
-        </h3>
-    </div>
-    <div data-role="content">
+    <div data-role="content" class="nopad">
 		<canvas id="shader-canvas"></canvas>
     </div>
-    <div data-theme="a" data-role="footer" data-position="fixed" data-tap-toggle="false" id="ftr">
-        <div class="ui-grid-c">
-            <div class="ui-block-a">
-			    <a data-role="button" href="#page1" data-icon="delete" data-iconpos="left" id="q_delete">
-                    Delete
-                </a>
+	<div data-theme="a" data-role="footer" class="ui-bar" data-position="fixed" data-tap-toggle="false" id="ftr">
+		<a href="#" class="up" data-icon="delete" id="q_delete">&nbsp;</a>
+		<a href="#" class="up" data-icon="home" id="q_clear_all">&nbsp;</a>
+		<div data-role="fieldcontain" class="ui-hide-label inline_flip">
+			<label for="touch_switch">Touch :</label>
+			<select name="touch_switch" id="touch_switch" data-role="slider" data-mini="true">
+				<option value="off">Sel</option>
+				<option value="on">Add</option>
+			</select>
+		</div>
+		<div data-role="fieldcontain" class="ui-hide-label inline_flip">
+			<label for="show_q_switch">Show Q:</label>
+			<select name="show_q_switch" id="show_q_switch" data-role="slider" data-mini="true">
+				<option value="off">Hide</option>
+				<option value="on">Show</option>
+			</select>
+		</div>
+		<div class="inline">
+			<label for="qulon_slider" class="ui-hidden-accessible">Qulon slider:</label>
+			<input name="qulon_slider" id="qulon_slider" value="0" min="-1000" max="1000" type="range">
+		</div>
 
-            </div>
-            <div class="ui-block-b" >
-                <a data-role="button" href="#page1" data-icon="minus" data-iconpos="left" id="q_clear_all">
-                    Clear All
-                </a>
-            </div>
-            <div class="ui-block-c">
-                <div data-role="fieldcontain">
-                    <label for="touch_switch">
-                        Touch
-                    </label>
-                    <select name="toggleswitch2" id="touch_switch" data-theme="" data-role="slider">
-                        <option value="off">
-                            Off
-                        </option>
-                        <option value="on">
-                            On
-                        </option>
-                    </select>
-                </div>
-            </div>
-            <div class="ui-block-d">
-                <div data-role="fieldcontain">
-                    <label for="touch_switch">
-                        Show Q [Shift]
-                    </label>
-                    <select name="toggleswitch2" id="show_q_switch" data-theme="" data-role="slider">
-                        <option value="off">
-                            Off
-                        </option>
-                        <option value="on">
-                            On
-                        </option>
-                    </select>
-                </div>
-            </div>
-        </div>
-        <div data-role="fieldcontain">
-            <label for="qulon_slider">
-                Qulon value
-            </label>
-            <input id="qulon_slider" name="slider" value="0" min="-1000" max="1000"
-            data-highlight="true" type="range">
-        </div>
-        <h3>
-            dobordx@gmail.com, 2013
-        </h3>
-    </div>
+	</div>
 </div>
 </body>
 </html>
