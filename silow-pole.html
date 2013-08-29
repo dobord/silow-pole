@@ -1,20 +1,35 @@
 ﻿<html>
 
 <head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Силовое поле на шейдерах</title>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <script type="text/javascript" src="lib/webgl-debug.js"></script>
 <script type="text/javascript" src="lib/webgl-utils.js"></script>
 <script type="text/javascript" src="lib/gl-matrix-min.js"></script>
-<script type="text/javascript" src="lib/jquery-2.0.3.min.js"></script>
-<!--<script type="text/javascript" src="lib/jquery.mobile-1.3.2.min.js"></script>-->
+<!--<script type="text/javascript" src="lib/jquery-2.0.3.min.js"></script>
+<script type="text/javascript" src="lib/jquery.mobile-1.3.2.min.js"></script>-->
+
+
+
+  <link rel="stylesheet" href="css/jquery.mobile-1.3.1.min.css">
+ 
+ 
+  <!-- jQuery and jQuery Mobile -->
+  
+ 
+  <script src="lib/jquery-1.9.1.min.js"></script>
+  <script src="lib/jquery.mobile-1.3.1.min.js"></script>
+
+
+  
 <script id="shader-fs" type="x-shader/x-fragment">
     precision mediump float;
-	
-	
+
 	//	максимальное число зарядов
 	const int max_num_Q = 16;
-	
 	
 	//	размер карты
 	uniform vec2 mSZ;
@@ -71,6 +86,8 @@
 </script>
 
 <script id="shader-vs" type="x-shader/x-vertex">
+	precision mediump float;
+	
     attribute vec3 aVertexPosition;
 	attribute vec2 aVertexTexcoord;
 
@@ -98,6 +115,8 @@
 </script>
 
 <script id="std-shader-vs" type="x-shader/x-vertex">
+	precision mediump float;
+	
     attribute vec3 aVertexPosition;
 	attribute vec2 aVertexTexcoord;
     attribute vec4 aVertexColor;
@@ -512,6 +531,8 @@ $(function(){
 		
 		map.mQ.push( vec4.fromValues(20,15,1000,0) );
 		map.mQ.push( vec4.fromValues(-20,0,-1000,0) );
+		
+		map.is_show_q = $('#show_q_switch').val() == 'on';
 
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
@@ -573,8 +594,8 @@ $(function(){
 	{
 		vec2.set( 
 			dst,
-			event.pageX - 0.5 * map.mSZ[0],
-			(map.mSZ[1] - event.pageY) - 0.5 * map.mSZ[1]
+			event.pageX - 0.5 * map.mSZ[0] - canvas_css.left,
+			(map.mSZ[1] - (event.pageY - canvas_css.top)) - 0.5 * map.mSZ[1]
 		);
 	}
 	
@@ -583,10 +604,11 @@ $(function(){
 	.contextmenu(function(){
        return false;
     })
-	.mousedown(function(e) {
-	
+	.on('vmousedown',function(e) {
+		
 		var q = vec4.create();
 		get_event_pos( q, e );
+		vec2.copy( map.last_pos, q );
 		
 		q[2] = 25 * ((e.which==1) - (e.which==3))
 		q[3] = 0;
@@ -596,13 +618,27 @@ $(function(){
 		if( map.sel_q !== null ){
 			vec2.sub( map.sel_offs, map.mQ[ map.sel_q ], q );
 			map.is_drag = true;
+			
+		}
+		
+		if( $('#touch_switch').val() == 'on' ){
+			var q = vec4.create();
+			vec2.copy( q, map.last_pos );
+			q[2] = $('#qulon_slider').val();
+			q[3] = 0;
+			handle_input_q(q);
+		}
+		else if( map.sel_q !== null ){
+			
+			$('#qulon_slider').val( map.mQ[ map.sel_q ][2] ).slider( "refresh" );
+		
 		}
 		
 	})
-	.mouseup(function(e) {
+	.on('vmouseup',function(e) {
 		map.is_drag = false;
 	})
-	.mousemove(function(e){
+	.on('vmousemove',function(e){
 		get_event_pos( map.last_pos, e );
 		
 		if( map.sel_q !== null && map.is_drag ){
@@ -611,13 +647,6 @@ $(function(){
 			vec2.copy( map.mQ[ map.sel_q ], q );
 		}
 	})
-
-	
-	$('#map_clear').click(function(){
-		map.mQ = [];
-		map.sel_q = null;
-		map.is_drag = false;
-	});
 	
 	
 	/**
@@ -687,6 +716,7 @@ $(function(){
 				
 			case 16: //SHIFT
 				map.is_show_q = true;
+				$('#show_q_switch').val('on').slider( "refresh" );
 				break;
 			
 		}
@@ -698,6 +728,7 @@ $(function(){
 		
 			case 16: //SHIFT
 				map.is_show_q = false;
+				$('#show_q_switch').val('off').slider( "refresh" );
 				break;
 		
 		}
@@ -720,44 +751,111 @@ $(function(){
 		initBuffers();
 	})
 	
+	
 	$('#q_delete').click(function(){
 		delete_current_q();
 	})
 	
+	$('#q_clear_all').click(function(){
+		map.mQ = [];
+		map.sel_q = null;
+		map.is_drag = false;
+	})
+	
+	
+	
+	$('#qulon_slider').on( "slidestop", function( event, ui ) {
+		if( map.sel_q !== null ){
+			map.mQ[ map.sel_q ][2] = $(this).val();
+		}
+	});
+	
+	$('#show_q_switch').on( "slidestop", function( event, ui ) {
+		map.is_show_q = $(this).val() == 'on';
+	});
+	
+	
+	var hdr = $('#hdr');
+	var page1 = $('#page1');
+	var canvas_css = {
+		position:	'absolute',
+		left: 		0,
+		top: 		hdr.height(),
+		width:		hdr.width(),
+		height:		page1.height() - hdr.height()
+	};
+	$('#shader-canvas').css( canvas_css );
 	webGLStart();
 
 });
 </script>
-<style type="text/css">
-html, body, canvas, div, label, input{ 
-	padding:0; margin:0; border: none;
-}
-html, body, canvas { 
-	width: 100%;
-	height: 100%;
-}
-div#control-panel { 
-	float: left;
-	position: absolute; 
-    top: 15px;
-    left: 15px;
-	width: 200px;
-	heght: 100px;
-	background: #fff;
-}
-</style>
 </head>
-
-
 <body>
-    <canvas id="shader-canvas"></canvas>
-	<div id="control-panel">
-		<label><input type="radio" name="q" id="radio_plus" checked="checked" />+25</label>
-		<label><input type="radio" name="q" />0</label>
-		<label><input type="radio" name="q" id="radio_minus"  />-25</label>
-		<input type="button" id="map_clear" value="clear"/>
-		<input type="button" id="q_delete" value="delete"/>
-	</div>
-</body>
+<!-- Home -->
+<div data-role="page" id="page1">
+    <div data-theme="a" data-role="header" id="hdr">
+        <h3>
+            Silow-Pole
+        </h3>
+    </div>
+    <div data-role="content">
+		<canvas id="shader-canvas"></canvas>
+    </div>
+    <div data-theme="a" data-role="footer" data-position="fixed" id="ftr">
+        <div class="ui-grid-c">
+            <div class="ui-block-a">
+			    <a data-role="button" href="#page1" data-icon="delete" data-iconpos="left" id="q_delete">
+                    Delete
+                </a>
 
+            </div>
+            <div class="ui-block-b" >
+                <a data-role="button" href="#page1" data-icon="minus" data-iconpos="left" id="q_clear_all">
+                    Clear All
+                </a>
+            </div>
+            <div class="ui-block-c">
+                <div data-role="fieldcontain">
+                    <label for="touch_switch">
+                        Touch
+                    </label>
+                    <select name="toggleswitch2" id="touch_switch" data-theme="" data-role="slider">
+                        <option value="off">
+                            Off
+                        </option>
+                        <option value="on">
+                            On
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <div class="ui-block-d">
+                <div data-role="fieldcontain">
+                    <label for="touch_switch">
+                        Show Q [Shift]
+                    </label>
+                    <select name="toggleswitch2" id="show_q_switch" data-theme="" data-role="slider">
+                        <option value="off">
+                            Off
+                        </option>
+                        <option value="on">
+                            On
+                        </option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div data-role="fieldcontain">
+            <label for="qulon_slider">
+                Qulon value
+            </label>
+            <input id="qulon_slider" name="slider" value="0" min="-1000" max="1000"
+            data-highlight="true" type="range">
+        </div>
+        <h3>
+            dobordx@gmail.com, 2013
+        </h3>
+    </div>
+</div>
+</body>
 </html>
