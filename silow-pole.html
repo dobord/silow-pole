@@ -13,9 +13,14 @@
 <link rel="stylesheet" href="css/jquery.mobile-1.3.1.min.css">
 <script id="shader-fs" type="x-shader/x-fragment">
 	precision mediump float;
-
-	//	максимальное число зарядов
+	
+	
+	//	максимальное количество зарядов
 	const int max_num_Q = 16;
+	
+	//	максимальное число эквипот-х линий
+	const int max_num_Phi = 16;
+	
 	
 	//	размер карты
 	uniform vec2 mSZ;
@@ -25,7 +30,16 @@
 	
 	//	кол-во зарядов
 	uniform int num_Q;
+	
+	//	потенцалы для эквипотенциальных линий
+	uniform	float mPhi[ max_num_Phi ]; 
 
+	// кол-во эквип-х линий
+	uniform	int num_Phi;	
+	
+	// массив значений потенциала для эквипот-х линий
+	uniform	float prec_phi ; 	// относит. точн. потенц. [= 0.05]
+	
 	
 	varying vec2 vTexcoord;
 	
@@ -66,6 +80,22 @@
 		}
 	
 		gl_FragColor = phi2vec4(phi);
+		
+		// эквипотенциальные линии		
+		for( int i=0; i < max_num_Phi; ++i ){
+		
+			if( i >= num_Phi )
+				break;
+		
+			float fp = abs( (phi-mPhi[i])/mPhi[i] )/prec_phi;
+			
+			if ( fp <= 1.0 ){
+				fp = sqrt( 1.0 - fp*fp );
+				gl_FragColor = mix( gl_FragColor, vec4(0.0,1.0,0.0,1.0), fp );
+			}
+			
+		}
+		
 		//gl_FragColor = vec4(vTexcoord,0.0,1.0);
 	}
 </script>
@@ -237,7 +267,9 @@ $(function(){
 		shaderProgram_q.mSZUniform = gl.getUniformLocation(shaderProgram_q, "mSZ");
 		shaderProgram_q.mQUniform = gl.getUniformLocation(shaderProgram_q, "mQ");
 		shaderProgram_q.num_QUniform = gl.getUniformLocation(shaderProgram_q, "num_Q");
-		
+		shaderProgram_q.mPhiUniform = gl.getUniformLocation(shaderProgram_q, "mPhi");
+		shaderProgram_q.num_PhiUniform = gl.getUniformLocation(shaderProgram_q, "num_Phi");
+		shaderProgram_q.prec_phiUniform = gl.getUniformLocation(shaderProgram_q, "prec_phi");
 		
 		//	шейдер-программа для простого рисования
 		
@@ -287,7 +319,9 @@ $(function(){
 		sel_offs	: vec2.fromValues( 0, 0 ),
 		last_pos	: vec2.fromValues( 0, 0 ),
 		is_show_q	: false,
-		q_radius	: 15
+		q_radius	: 15,
+		mPhi		: [],
+		prec_phi	: 0.05	//	умалчиваемая точнось экв. пот. поверхностей
 	};
 
 	function mvPushMatrix() {
@@ -312,6 +346,11 @@ $(function(){
 		for( var i=0; i < map.mQ.length; ++i){
 			gl.uniform4fv(gl.getUniformLocation(shaderProgram_q, "mQ["+i+"]"), map.mQ[i]);
 		}
+		gl.uniform1i(shaderProgram_q.num_PhiUniform, map.mPhi.length);
+		for( var i=0; i < map.mPhi.length; ++i){
+			gl.uniform1f(gl.getUniformLocation(shaderProgram_q, "mPhi["+i+"]"), map.mPhi[i]);
+		}
+		gl.uniform1f(shaderProgram_q.prec_phiUniform, map.prec_phi);
 	}
 
 
@@ -663,6 +702,26 @@ $(function(){
 		
 	}
 	
+	/**
+	*	Обработка ввода эквипотенциальной поверхности
+	*/
+	function handle_input_phi(){
+	
+		if( map.mPhi.length >= 16 )
+			return;
+		
+		var phi = 0.0;
+		
+		for( var i=0; i < map.mQ.length; ++i){
+				
+			phi += map.mQ[i][2] / vec2.distance( map.last_pos, map.mQ[i] );
+			
+		}
+		
+		map.mPhi.push( phi );
+		
+	}
+	
 	
 	$(window)
 	.on('keydown',function(e){
@@ -671,6 +730,10 @@ $(function(){
 		
 			case 46: // DEL
 				delete_current_q();
+				break;
+				
+			case 106:	// KP_MUL
+				handle_input_phi();
 				break;
 				
 			case 107:	// KP_ADD
