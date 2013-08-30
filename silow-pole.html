@@ -639,12 +639,19 @@ $(function(){
 			
 		}
 		
-		if( $('#touch_switch').val() == 'on' ){
-			var q = vec4.create();
-			vec2.copy( q, map.last_pos );
-			q[2] = $('#qulon_slider').val();
-			q[3] = 0;
-			handle_input_q(q);
+		if( $('#touch_switch').val() == 'add' ){
+			
+			if( $('#q_phi_switcher').val() == 'q' ){
+				var q = vec4.create();
+				vec2.copy( q, map.last_pos );
+				q[2] = $('#qulon_slider').val();
+				q[3] = 0;
+				handle_input_q(q);
+			}
+			else{
+				handle_input_phi();
+			}
+
 		}
 		else if( map.sel_q !== null ){
 			
@@ -758,7 +765,7 @@ $(function(){
 				
 			case 16: //SHIFT
 				map.is_show_q = true;
-				$('#show_q_switch').val('on').slider( "refresh" );
+				$('#show_q_switch').val('show').slider( "refresh" );
 				break;
 			
 		}
@@ -770,7 +777,7 @@ $(function(){
 		
 			case 16: //SHIFT
 				map.is_show_q = false;
-				$('#show_q_switch').val('off').slider( "refresh" );
+				$('#show_q_switch').val('hide').slider( "refresh" );
 				break;
 		
 		}
@@ -794,11 +801,16 @@ $(function(){
 	})
 	
 	
-	$('#q_delete').click(function(){
-		delete_current_q();
+	$('#delete').click(function(){
+		if( $('#q_phi_switcher').val() == 'q' ){
+			delete_current_q();
+		}
+		else{
+			map.mPhi = [];
+		}
 	})
 	
-	$('#q_clear_all').click(function(){
+	$('#clear_all').click(function(){
 		map.mQ = [];
 		map.sel_q = null;
 		map.is_drag = false;
@@ -813,7 +825,7 @@ $(function(){
 	});
 	
 	$('#show_q_switch').on( "slidestop", function( event, ui ) {
-		map.is_show_q = $(this).val() == 'on';
+		map.is_show_q = $(this).val() == 'show';
 	});
 	
 	webGLStart();
@@ -823,7 +835,7 @@ $(function(){
 		map.mQ.push( vec4.fromValues(20,15,100,0) );
 		map.mQ.push( vec4.fromValues(-20,0,-100,0) );
 		
-		map.is_show_q = $('#show_q_switch').val() == 'on';
+		map.is_show_q = $('#show_q_switch').val() == 'show';
 		
 	}
 
@@ -850,7 +862,7 @@ div.inline_flip{
 
 @media all and (min-width: 40em){
 
-	div.inline{ min-width: calc(100% - 20em); }
+	div.inline{ min-width: calc(100% - 24em); }
 	
 	div.inline_flip{
 		position: relative;
@@ -875,20 +887,27 @@ div.inline_flip{
 		<canvas id="shader-canvas"></canvas>
 	</div>
 	<div data-theme="a" data-role="footer" class="ui-bar" data-position="fixed" data-tap-toggle="false" id="ftr">
-		<a href="#" class="up" data-icon="delete" id="q_delete">&nbsp;</a>
-		<a href="#" class="up" data-icon="home" id="q_clear_all">&nbsp;</a>
+		<a href="#" class="up" data-icon="delete" id="delete">&nbsp;</a>
+		<a href="#" class="up" data-icon="home" id="clear_all">&nbsp;</a>
 		<div data-role="fieldcontain" class="ui-hide-label inline_flip">
 			<label for="touch_switch">Touch :</label>
 			<select name="touch_switch" id="touch_switch" data-role="slider" data-mini="true">
-				<option value="off">Sel</option>
-				<option value="on">Add</option>
+				<option value="sel">Sel</option>
+				<option value="add">Add</option>
 			</select>
 		</div>
 		<div data-role="fieldcontain" class="ui-hide-label inline_flip">
 			<label for="show_q_switch">Show Q:</label>
 			<select name="show_q_switch" id="show_q_switch" data-role="slider" data-mini="true">
-				<option value="off">Hide</option>
-				<option value="on">Show</option>
+				<option value="hide">Hide</option>
+				<option value="show">Show</option>
+			</select>
+		</div>
+		<div data-role="fieldcontain" class="ui-hide-label inline_flip">
+			<label for="q_phi_switcher">Q / Phi:</label>
+			<select name="q_phi_switcher" id="q_phi_switcher" data-role="slider" data-mini="true">
+				<option value="q">Q</option>
+				<option value="phi">Phi</option>
 			</select>
 		</div>
 		<div class="inline">
