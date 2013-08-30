@@ -730,10 +730,24 @@ $(function(){
 	}
 	
 	
+	function handle_clear_all(){
+		
+		map.mQ = [];
+		map.mPhi = [];
+		map.sel_q = null;
+		map.is_drag = false;
+		
+	}
+	
+	
 	$(window)
 	.on('keydown',function(e){
 	
 		switch( e.which ){
+		
+			case 36: // HOME
+				handle_clear_all();
+				break;
 		
 			case 46: // DEL
 				delete_current_q();
@@ -811,9 +825,7 @@ $(function(){
 	})
 	
 	$('#clear_all').click(function(){
-		map.mQ = [];
-		map.sel_q = null;
-		map.is_drag = false;
+		handle_clear_all();
 	})
 	
 	
