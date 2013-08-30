@@ -90,7 +90,7 @@
 			float fp = abs( (phi-mPhi[i])/mPhi[i] )/prec_phi;
 			
 			if ( fp <= 1.0 ){
-				fp = sqrt( 1.0 - fp*fp );
+				fp = sqrt( 1.0 - fp*fp )*0.8;
 				gl_FragColor = mix( gl_FragColor, vec4(0.0,1.0,0.0,1.0), fp );
 			}
 			
@@ -321,7 +321,8 @@ $(function(){
 		is_show_q	: false,
 		q_radius	: 15,
 		mPhi		: [],
-		prec_phi	: 0.05	//	умалчиваемая точнось экв. пот. поверхностей
+		prec_phi	: 0.05,	//	умалчиваемая точнось экв. пот. поверхностей
+		is_show_line: false
 	};
 
 	function mvPushMatrix() {
@@ -368,6 +369,126 @@ $(function(){
 	var circleTexcoordBuffer;
 	var circleColorBuffer;
 	var circleIndicesBuffer;
+	
+	
+	var lineBuffer = {
+	
+		vertices : [],
+		texcoords : [],
+		colors : [],
+		indices : [],
+		
+		//	Создание буферов
+		init: function(){
+			this.VertexPosition = gl.createBuffer();
+			this.VertexPosition.itemSize = 3;
+			this.Texcoords = gl.createBuffer();
+			this.Texcoords.itemSize = 2;
+			this.Colors = gl.createBuffer();
+			this.Colors.itemSize = 4;
+			this.Indices = gl.createBuffer();
+		},
+		
+		//	Заполнение буферов
+		set: function(){
+			gl.bindBuffer(gl.ARRAY_BUFFER, this.VertexPosition);
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.DYNAMIC_DRAW);
+			
+			gl.bindBuffer(gl.ARRAY_BUFFER, this.Texcoords);
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.texcoords), gl.DYNAMIC_DRAW);
+			
+			gl.bindBuffer(gl.ARRAY_BUFFER, this.Colors);
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.colors), gl.DYNAMIC_DRAW);
+			
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.Indices);
+			gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.DYNAMIC_DRAW);
+		},
+		
+		//	Очистка
+		clear: function(){
+			this.vertices = [];
+			this.texcoords = [];
+			this.colors = [];
+			this.indices = [];
+		},
+		
+		
+		draw_line: function( p0, p1, color, half_width ){
+			
+			var d = vec2.create();
+			vec2.sub( d, p1, p0 );
+			
+			var n = vec2.clone( d );
+			vec2.normalize( n, n );
+			vec2.set( n, -n[1], n[0] );
+			vec2.scale( n, n, half_width );
+			
+			var vc = (this.vertices.length / 3)|0;
+			
+			this.vertices.push( 
+				p0[0] - n[0], p0[1] - n[1], 0.5,
+				p1[0] - n[0], p1[1] - n[1], 0.5,
+				p1[0] + n[0], p1[1] + n[1], 0.5,
+				p0[0] + n[0], p0[1] + n[1], 0.5 
+			);
+			
+			this.texcoords.push( 
+				0.0, 0.0,
+				1.0, 0.0,
+				1.0, 1.0,
+				0.0, 1.0
+			);
+			
+			this.colors.push( 
+				color[0], color[1], color[2], color[3],
+				color[0], color[1], color[2], color[3],
+				color[0], color[1], color[2], color[3],
+				color[0], color[1], color[2], color[3]
+			);
+			
+			this.indices.push( 
+				vc+0, vc+1, vc+2,
+				vc+0, vc+2, vc+3
+			);
+			
+		},
+		
+
+      
+	  
+		render: function(){
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, this.VertexPosition);
+			gl.vertexAttribPointer(shaderProgram_std.vertexPositionAttribute, this.VertexPosition.itemSize, gl.FLOAT, false, 0, 0);
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, this.Texcoords);
+			gl.vertexAttribPointer(shaderProgram_std.vertexTexcoordAttribute, this.Texcoords.itemSize, gl.FLOAT, false, 0, 0);
+			
+			gl.bindBuffer(gl.ARRAY_BUFFER, this.Colors);
+			gl.vertexAttribPointer(shaderProgram_std.vertexColorAttribute, this.Colors.itemSize, gl.FLOAT, false, 0, 0);
+			
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.Indices);
+
+			// setup matrix
+			gl.uniformMatrix4fv(shaderProgram_std.pMatrixUniform, false, pMatrix);
+			gl.uniformMatrix4fv(shaderProgram_std.mvMatrixUniform, false, mvMatrix);
+			
+			
+			gl.enableVertexAttribArray(shaderProgram_std.vertexPositionAttribute);
+			gl.enableVertexAttribArray(shaderProgram_std.vertexTexcoordAttribute);
+			gl.enableVertexAttribArray(shaderProgram_std.vertexColorAttribute);
+			
+			gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_SHORT, 0);
+			
+			var err = gl.getError();
+			
+			gl.disableVertexAttribArray(shaderProgram_std.vertexPositionAttribute);
+			gl.disableVertexAttribArray(shaderProgram_std.vertexTexcoordAttribute);
+			gl.disableVertexAttribArray(shaderProgram_std.vertexColorAttribute);
+			
+		}
+		
+	};
 	
 
 	function initBuffers() {
@@ -460,6 +581,9 @@ $(function(){
 		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices2), gl.STATIC_DRAW);
 		circleIndicesBuffer.num = 6;
 		
+
+		lineBuffer.init();
+		
 	}
 
 	var rTri = 0;
@@ -467,7 +591,7 @@ $(function(){
 
 	function drawScene() {
 		gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		mat4.ortho(pMatrix, -0.5*gl.viewportWidth, 0.5*gl.viewportWidth, -0.5*gl.viewportHeight, 0.5*gl.viewportHeight, 0.1, 100.0 );
 		mat4.identity(mvMatrix);
@@ -520,6 +644,90 @@ $(function(){
 			gl.disableVertexAttribArray(shaderProgram_std.vertexColorAttribute);
 			
 		}
+		
+		
+		if( map.is_show_line ){
+		
+			lineBuffer.clear();
+		
+			gl.useProgram(shaderProgram_std);
+			
+			//	позиция точки на силовой линии
+			var p = vec2.create();
+			
+			//	смещение от заряда до точки
+			var d = vec2.create();
+			
+			//	напряженность электрического поля в точке
+			var e = vec2.create();
+			
+			//	напряжённость от одного заряда
+			var e1 = vec2.create();
+			
+			var dl;
+			
+			var step = 5;
+			var kill_zone = 4;
+			var line_break;
+			
+			var color = vec4.fromValues(1,1,1,0.1);
+
+			//	цикл по зарядам
+			for( var i = 0 ; i < map.mQ.length; ++i ){
+				
+				var nj = Math.round( Math.abs(map.mQ[i][2])/20 ) + 3;
+				var q = map.mQ[i][2] >= 0 ? +1: -1;
+				
+				//	цикл по линиям заряда
+				for( var j = 0; j<nj; ++j ){
+				
+					var rad = j*2*Math.PI/nj,
+						s = Math.sin(rad),
+						c = Math.cos(rad);
+						
+					vec2.set( p, map.mQ[i][0] + c*step, map.mQ[i][1] + s*step );
+					
+					line_break = false;
+					
+					//	цикл по точкам силовой линии
+					for( var k = 0; k<200; ++k ){
+					
+						vec2.set( e, 0, 0 );
+						
+						//	цикл по зарядам
+						for( var l=0; l < map.mQ.length; ++l){
+						
+							vec2.sub( d, p, map.mQ[l] );
+							dl = vec2.length(d);
+							vec2.scale( e1, d, q*map.mQ[l][2]/(dl*dl*dl) );
+							vec2.add( e, e, e1 );
+							
+							if( vec2.squaredDistance( p, map.mQ[l] ) < kill_zone*kill_zone  ){
+								line_break = true;
+								break;
+							}
+							
+						}
+						
+						if( line_break )
+							break;
+						
+						vec2.normalize( e1, e );
+						vec2.scale( e1, e1, step );
+						vec2.add( e1, e1, p );
+						lineBuffer.draw_line( p, e1, color, 2 );
+						vec2.copy( p, e1 );
+					
+					}
+				
+				}
+
+			}
+			lineBuffer.draw_line( vec2.fromValues(0,0), vec2.fromValues(200,50), c, 15 );
+			lineBuffer.set();
+			lineBuffer.render();
+			
+		}
 
 	}
 
@@ -561,8 +769,9 @@ $(function(){
 		map_init();
 
 		gl.clearColor(0.0, 0.0, 0.0, 1.0);
-		gl.enable(gl.DEPTH_TEST);
-
+		gl.disable(gl.DEPTH_TEST);
+		gl.enable(gl.BLEND);
+		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);     
 		tick();
 	}
 	
@@ -840,6 +1049,10 @@ $(function(){
 		map.is_show_q = $(this).val() == 'show';
 	});
 	
+	$('#show_line_switch').on( "slidestop", function( event, ui ) {
+		map.is_show_line= $(this).val() == 'on';
+	});
+	
 	webGLStart();
 	
 	function map_init(){
@@ -848,7 +1061,7 @@ $(function(){
 		map.mQ.push( vec4.fromValues(-20,0,-100,0) );
 		
 		map.is_show_q = $('#show_q_switch').val() == 'show';
-		
+		map.is_show_line = $('#show_line_switch').val() == 'on';
 	}
 
 });
@@ -874,7 +1087,7 @@ div.inline_flip{
 
 @media all and (min-width: 40em){
 
-	div.inline{ min-width: calc(100% - 24em); }
+	div.inline{ min-width: calc(100% - 30em); }
 	
 	div.inline_flip{
 		position: relative;
@@ -912,7 +1125,7 @@ div.inline_flip{
 			<label for="show_q_switch">Show Q:</label>
 			<select name="show_q_switch" id="show_q_switch" data-role="slider" data-mini="true">
 				<option value="hide">Hide</option>
-				<option value="show">Show</option>
+				<option value="show">Light</option>
 			</select>
 		</div>
 		<div data-role="fieldcontain" class="ui-hide-label inline_flip">
@@ -920,6 +1133,13 @@ div.inline_flip{
 			<select name="q_phi_switcher" id="q_phi_switcher" data-role="slider" data-mini="true">
 				<option value="q">Q</option>
 				<option value="phi">Phi</option>
+			</select>
+		</div>
+		<div data-role="fieldcontain" class="ui-hide-label inline_flip">
+			<label for="show_line_switch">Show Lines:</label>
+			<select name="show_line_switch" id="show_line_switch" data-role="slider" data-mini="true">
+				<option value="off">NoLine</option>
+				<option value="on">Line</option>
 			</select>
 		</div>
 		<div class="inline">
