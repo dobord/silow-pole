@@ -446,13 +446,10 @@ $(function(){
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 		mat4.ortho(pMatrix, -0.5*gl.viewportWidth, 0.5*gl.viewportWidth, -0.5*gl.viewportHeight, 0.5*gl.viewportHeight, 0.1, 100.0 );
-
         mat4.identity(mvMatrix);
-		
-		//mat4.scale(mvMatrix, [50.0, 50.0, 1.0]);
-
         mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, -10.0]);
-
+		
+		//	Отрисовка поля
 
         mvPushMatrix();
         mat4.rotate(mvMatrix, mvMatrix, degToRad(rSquare), [1, 0, 0]);
@@ -482,14 +479,22 @@ $(function(){
 		
 		if( map.is_show_q ){
 		
-			var p = vec2.create();
-			
+			//	Подсветка положения зарядов
+		
 			gl.useProgram(shaderProgram_std);
+			
+			gl.enableVertexAttribArray(shaderProgram_std.vertexPositionAttribute);
+			gl.enableVertexAttribArray(shaderProgram_std.vertexTexcoordAttribute);
+			gl.enableVertexAttribArray(shaderProgram_std.vertexColorAttribute);
 		
 			for( var i=0; i<map.mQ.length; ++i ){
-				//get_screen_pos( p, map.mQ[i] );
 				draw_circle( map.mQ[i] );
 			}
+			
+			gl.disableVertexAttribArray(shaderProgram_std.vertexPositionAttribute);
+			gl.disableVertexAttribArray(shaderProgram_std.vertexTexcoordAttribute);
+			gl.disableVertexAttribArray(shaderProgram_std.vertexColorAttribute);
+			
 		}
 
     }
@@ -546,10 +551,6 @@ $(function(){
 		mat4.translate(mvMatrix, mvMatrix, [ p[0], p[1], 0.0 ]);
 		
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, circleIndicesBuffer);
-		
-		gl.enableVertexAttribArray(shaderProgram_std.vertexPositionAttribute);
-		gl.enableVertexAttribArray(shaderProgram_std.vertexTexcoordAttribute);
-		gl.enableVertexAttribArray(shaderProgram_std.vertexColorAttribute);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, circleVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram_std.vertexPositionAttribute, circleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -570,10 +571,6 @@ $(function(){
 
         mvPopMatrix();
 		
-		gl.disableVertexAttribArray(shaderProgram_std.vertexPositionAttribute);
-		gl.disableVertexAttribArray(shaderProgram_std.vertexTexcoordAttribute);
-		gl.disableVertexAttribArray(shaderProgram_std.vertexColorAttribute);
-		
 	}
 	
 	
@@ -591,8 +588,8 @@ $(function(){
 	{
 		vec2.set( 
 			dst,
-			event.pageX - 0.5 * map.mSZ[0] - canvas_css.left,
-			(map.mSZ[1] - (event.pageY - canvas_css.top)) - 0.5 * map.mSZ[1]
+			event.pageX - 0.5 * map.mSZ[0],
+			(map.mSZ[1] - event.pageY ) - 0.5 * map.mSZ[1]
 		);
 	}
 	
@@ -683,7 +680,7 @@ $(function(){
 	
 	
 	$(window)
-	.keydown(function(e){
+	.on('keydown',function(e){
 	
 		switch( e.which ){
 		
@@ -719,7 +716,7 @@ $(function(){
 		}
 			
 	})
-	.keyup(function(e){
+	.on('keyup',function(e){
 	
 		switch( e.which ){
 		
@@ -731,13 +728,13 @@ $(function(){
 		}
 		
 	})
-	.resize(function(e){
+	.on('resize',function(e){
 		if( !gl )
 			return;
 			
-		var can = $('#shader-canvas');
-		var canvas = can.get(0);
-		vec2.set( map.mSZ, can.width(), can.height() );
+		var win = $(window);
+		var canvas = $('#shader-canvas').get(0);
+		vec2.set( map.mSZ, win.width(), win.height() );
 		
 		canvas.width = map.mSZ[0];
 		canvas.height = map.mSZ[1];
@@ -771,18 +768,6 @@ $(function(){
 		map.is_show_q = $(this).val() == 'on';
 	});
 	
-	
-	var hdr = $('#hdr');
-	var page1 = $('#page1');
-	var canvas_css = {
-		position:	'absolute',
-		left: 		0,
-		top: 		0,
-		width:		page1.width(),
-		height:		page1.height()
-	};
-	$('#shader-canvas').css( canvas_css );
-	
 	webGLStart();
 	
 	function map_init(){
@@ -809,7 +794,11 @@ div.inline_flip{
 	padding: 0;
 }
 
-
+#shader-canvas{
+	position: absolute;
+	width: 100%;
+	height: 100%;
+}
 
 
 @media all and (min-width: 40em){
