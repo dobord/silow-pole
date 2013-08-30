@@ -1,5 +1,4 @@
 ﻿<html>
-
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
@@ -9,24 +8,11 @@
 <script type="text/javascript" src="lib/webgl-debug.js"></script>
 <script type="text/javascript" src="lib/webgl-utils.js"></script>
 <script type="text/javascript" src="lib/gl-matrix-min.js"></script>
-<!--<script type="text/javascript" src="lib/jquery-2.0.3.min.js"></script>
-<script type="text/javascript" src="lib/jquery.mobile-1.3.2.min.js"></script>-->
-
-
-
-  <link rel="stylesheet" href="css/jquery.mobile-1.3.1.min.css">
- 
- 
-  <!-- jQuery and jQuery Mobile -->
-  
- 
-  <script src="lib/jquery-1.9.1.min.js"></script>
-  <script src="lib/jquery.mobile-1.3.1.min.js"></script>
-
-
-  
+<script type="text/javascript" src="lib/jquery-2.0.3.min.js"></script>
+<script type="text/javascript" src="lib/jquery.mobile-1.3.2.min.js"></script>
+<link rel="stylesheet" href="css/jquery.mobile-1.3.1.min.css">
 <script id="shader-fs" type="x-shader/x-fragment">
-    precision mediump float;
+	precision mediump float;
 
 	//	максимальное число зарядов
 	const int max_num_Q = 16;
@@ -46,26 +32,25 @@
 	
 	vec4 phi2vec4(float phi)
 	{
-			vec4 color;
-			if (phi>0.0)
-			{
-					if(phi>1.0)
-							color = vec4(1.0,1.0-1.0/phi,0.0,1.0);
-					else    color = vec4(phi,0.0,0.0,1.0);
-							
-			}
+		vec4 color;
+		if (phi>0.0)
+		{
+			if(phi>1.0)
+				color = vec4(1.0,1.0-1.0/phi,0.0,1.0);
 			else
-			{
-					if(phi<-1.0)
-							color = vec4(0.0,1.0+1.0/phi,1.0,1.0);
-					else
-							color = vec4(0.0,0.0,-phi,1.0);
-							
-			}               
-			return color;
+				color = vec4(phi,0.0,0.0,1.0);	
+		}
+		else
+		{
+			if(phi<-1.0)
+				color = vec4(0.0,1.0+1.0/phi,1.0,1.0);
+			else
+				color = vec4(0.0,0.0,-phi,1.0);
+		}			   
+		return color;
 	}
 
-    void main(void) {
+	void main(void) {
 		
 		vec2 pos = (vTexcoord - vec2(0.5)) * mSZ;
 		
@@ -82,62 +67,62 @@
 	
 		gl_FragColor = phi2vec4(phi);
 		//gl_FragColor = vec4(vTexcoord,0.0,1.0);
-    }
+	}
 </script>
 
 <script id="shader-vs" type="x-shader/x-vertex">
 	precision mediump float;
 	
-    attribute vec3 aVertexPosition;
+	attribute vec3 aVertexPosition;
 	attribute vec2 aVertexTexcoord;
 
-    uniform mat4 uMVMatrix;
-    uniform mat4 uPMatrix;
+	uniform mat4 uMVMatrix;
+	uniform mat4 uPMatrix;
 
 	varying vec2 vTexcoord;
 
-    void main(void) {
-        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+	void main(void) {
+		gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
 		vTexcoord = aVertexTexcoord;
-    }
+	}
 </script>
 
 <script id="std-shader-fs" type="x-shader/x-fragment">
-    precision mediump float;
+	precision mediump float;
 
-    varying vec4 vColor;
+	varying vec4 vColor;
 	varying vec2 vTexcoord;
 
-    void main(void) {
-        gl_FragColor = vColor;
+	void main(void) {
+		gl_FragColor = vColor;
 		//gl_FragColor = vec4(vTexcoord,0.0,1.0);
-    }
+	}
 </script>
 
 <script id="std-shader-vs" type="x-shader/x-vertex">
 	precision mediump float;
 	
-    attribute vec3 aVertexPosition;
+	attribute vec3 aVertexPosition;
 	attribute vec2 aVertexTexcoord;
-    attribute vec4 aVertexColor;
+	attribute vec4 aVertexColor;
 
-    uniform mat4 uMVMatrix;
-    uniform mat4 uPMatrix;
+	uniform mat4 uMVMatrix;
+	uniform mat4 uPMatrix;
 
-    varying vec4 vColor;
+	varying vec4 vColor;
 	varying vec2 vTexcoord;
 
-    void main(void) {
-        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-        vColor = aVertexColor;
+	void main(void) {
+		gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+		vColor = aVertexColor;
 		vTexcoord = aVertexTexcoord;
-    }
+	}
 </script>
 
 
 <script type="text/javascript">
 $(function(){
-    var gl;
+	var gl;
 	
 	function throwOnGLError(err, funcName, args) {
 	  throw WebGLDebugUtils.glEnumToString(err) + " was caused by call to: " + funcName;
@@ -164,80 +149,80 @@ $(function(){
 	   validateNoneOfTheArgsAreUndefined (functionName, args);
 	}
 
-    function initGL(canvas) {
+	function initGL(canvas) {
 	
-        try {
+		try {
 			gl = canvas.getContext("experimental-webgl");
 			gl = WebGLDebugUtils.makeDebugContext(gl, throwOnGLError, logAndValidate);
 			gl.is_trace_webgl = false;
-            gl.viewportWidth = map.mSZ[0];
-            gl.viewportHeight = map.mSZ[1];
-        } catch (e) {
-        }
-        if (!gl) {
-            alert("Could not initialise WebGL, sorry :-(");
-        }
-    }
+			gl.viewportWidth = map.mSZ[0];
+			gl.viewportHeight = map.mSZ[1];
+		} catch (e) {
+		}
+		if (!gl) {
+			alert("Could not initialise WebGL, sorry :-(");
+		}
+	}
 
 
-    function getShader(gl, id) {
-        var shaderScript = document.getElementById(id);
-        if (!shaderScript) {
-            return null;
-        }
+	function getShader(gl, id) {
+		var shaderScript = document.getElementById(id);
+		if (!shaderScript) {
+			return null;
+		}
 
-        var str = "";
-        var k = shaderScript.firstChild;
-        while (k) {
-            if (k.nodeType == 3) {
-                str += k.textContent;
-            }
-            k = k.nextSibling;
-        }
+		var str = "";
+		var k = shaderScript.firstChild;
+		while (k) {
+			if (k.nodeType == 3) {
+				str += k.textContent;
+			}
+			k = k.nextSibling;
+		}
 
-        var shader;
-        if (shaderScript.type == "x-shader/x-fragment") {
-            shader = gl.createShader(gl.FRAGMENT_SHADER);
-        } else if (shaderScript.type == "x-shader/x-vertex") {
-            shader = gl.createShader(gl.VERTEX_SHADER);
-        } else {
-            return null;
-        }
+		var shader;
+		if (shaderScript.type == "x-shader/x-fragment") {
+			shader = gl.createShader(gl.FRAGMENT_SHADER);
+		} else if (shaderScript.type == "x-shader/x-vertex") {
+			shader = gl.createShader(gl.VERTEX_SHADER);
+		} else {
+			return null;
+		}
 
-        gl.shaderSource(shader, str);
-        gl.compileShader(shader);
+		gl.shaderSource(shader, str);
+		gl.compileShader(shader);
 
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            alert(gl.getShaderInfoLog(shader));
-            return null;
-        }
+		if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+			alert(gl.getShaderInfoLog(shader));
+			return null;
+		}
 
-        return shader;
-    }
+		return shader;
+	}
 
 
-    var shaderProgram_q, shaderProgram_std;
+	var shaderProgram_q, shaderProgram_std;
 
-    function initShaders() {
+	function initShaders() {
 		
 		//	шейдер-программа для зарядов
 	
-        var fragmentShader = getShader(gl, "shader-fs");
-        var vertexShader = getShader(gl, "shader-vs");
+		var fragmentShader = getShader(gl, "shader-fs");
+		var vertexShader = getShader(gl, "shader-vs");
 
-        shaderProgram_q = gl.createProgram();
-        gl.attachShader(shaderProgram_q, vertexShader);
-        gl.attachShader(shaderProgram_q, fragmentShader);
-        gl.linkProgram(shaderProgram_q);
+		shaderProgram_q = gl.createProgram();
+		gl.attachShader(shaderProgram_q, vertexShader);
+		gl.attachShader(shaderProgram_q, fragmentShader);
+		gl.linkProgram(shaderProgram_q);
 
-        if (!gl.getProgramParameter(shaderProgram_q, gl.LINK_STATUS)) {
-            alert("Could not initialise shaders");
-        }
+		if (!gl.getProgramParameter(shaderProgram_q, gl.LINK_STATUS)) {
+			alert("Could not initialise shaders");
+		}
 
-        gl.useProgram(shaderProgram_q);
+		gl.useProgram(shaderProgram_q);
 
-        shaderProgram_q.vertexPositionAttribute = gl.getAttribLocation(shaderProgram_q, "aVertexPosition");
-        gl.enableVertexAttribArray(shaderProgram_q.vertexPositionAttribute);
+		shaderProgram_q.vertexPositionAttribute = gl.getAttribLocation(shaderProgram_q, "aVertexPosition");
+		gl.enableVertexAttribArray(shaderProgram_q.vertexPositionAttribute);
 		
 		shaderProgram_q.vertexTexcoordAttribute = gl.getAttribLocation(shaderProgram_q, "aVertexTexcoord");
 		gl.enableVertexAttribArray(shaderProgram_q.vertexTexcoordAttribute);
@@ -247,8 +232,8 @@ $(function(){
 		gl.disableVertexAttribArray(shaderProgram_q.vertexTexcoordAttribute);
 
 
-        shaderProgram_q.pMatrixUniform = gl.getUniformLocation(shaderProgram_q, "uPMatrix");
-        shaderProgram_q.mvMatrixUniform = gl.getUniformLocation(shaderProgram_q, "uMVMatrix");
+		shaderProgram_q.pMatrixUniform = gl.getUniformLocation(shaderProgram_q, "uPMatrix");
+		shaderProgram_q.mvMatrixUniform = gl.getUniformLocation(shaderProgram_q, "uMVMatrix");
 		shaderProgram_q.mSZUniform = gl.getUniformLocation(shaderProgram_q, "mSZ");
 		shaderProgram_q.mQUniform = gl.getUniformLocation(shaderProgram_q, "mQ");
 		shaderProgram_q.num_QUniform = gl.getUniformLocation(shaderProgram_q, "num_Q");
@@ -259,21 +244,21 @@ $(function(){
 		gl.useProgram(null);
 		
 		var fragmentShader2 = getShader(gl, "std-shader-fs");
-        var vertexShader2 = getShader(gl, "std-shader-vs");
-        
-        shaderProgram_std = gl.createProgram();
-        gl.attachShader(shaderProgram_std, vertexShader2);
-        gl.attachShader(shaderProgram_std, fragmentShader2);
-        gl.linkProgram(shaderProgram_std);
-        
-        if (!gl.getProgramParameter(shaderProgram_std, gl.LINK_STATUS)) {
-            alert("Could not initialise shaders");
-        }
-        
-        gl.useProgram(shaderProgram_std);
+		var vertexShader2 = getShader(gl, "std-shader-vs");
+		
+		shaderProgram_std = gl.createProgram();
+		gl.attachShader(shaderProgram_std, vertexShader2);
+		gl.attachShader(shaderProgram_std, fragmentShader2);
+		gl.linkProgram(shaderProgram_std);
+		
+		if (!gl.getProgramParameter(shaderProgram_std, gl.LINK_STATUS)) {
+			alert("Could not initialise shaders");
+		}
+		
+		gl.useProgram(shaderProgram_std);
 		
 		shaderProgram_std.vertexPositionAttribute = gl.getAttribLocation(shaderProgram_std, "aVertexPosition");
-        gl.enableVertexAttribArray(shaderProgram_std.vertexPositionAttribute);
+		gl.enableVertexAttribArray(shaderProgram_std.vertexPositionAttribute);
 		
 		shaderProgram_std.vertexTexcoordAttribute = gl.getAttribLocation(shaderProgram_std, "aVertexTexcoord");
 		gl.enableVertexAttribArray(shaderProgram_std.vertexTexcoordAttribute);
@@ -286,13 +271,13 @@ $(function(){
 		gl.disableVertexAttribArray(shaderProgram_std.vertexColorAttribute);
 		
 		shaderProgram_std.pMatrixUniform = gl.getUniformLocation(shaderProgram_std, "uPMatrix");
-        shaderProgram_std.mvMatrixUniform = gl.getUniformLocation(shaderProgram_std, "uMVMatrix");
-    }
+		shaderProgram_std.mvMatrixUniform = gl.getUniformLocation(shaderProgram_std, "uMVMatrix");
+	}
 
 
-    var mvMatrix = mat4.create();
-    var mvMatrixStack = [];
-    var pMatrix = mat4.create();
+	var mvMatrix = mat4.create();
+	var mvMatrixStack = [];
+	var pMatrix = mat4.create();
 	
 	var map = {
 		mSZ			: vec2.fromValues( 0, 0 ),
@@ -305,37 +290,37 @@ $(function(){
 		q_radius	: 15
 	};
 
-    function mvPushMatrix() {
-        var copy = mat4.create();
-        mat4.copy(copy,mvMatrix);
-        mvMatrixStack.push(copy);
-    }
+	function mvPushMatrix() {
+		var copy = mat4.create();
+		mat4.copy(copy,mvMatrix);
+		mvMatrixStack.push(copy);
+	}
 
-    function mvPopMatrix() {
-        if (mvMatrixStack.length == 0) {
-            throw "Invalid popMatrix!";
-        }
-        mvMatrix = mvMatrixStack.pop();
-    }
+	function mvPopMatrix() {
+		if (mvMatrixStack.length == 0) {
+			throw "Invalid popMatrix!";
+		}
+		mvMatrix = mvMatrixStack.pop();
+	}
 
 
-    function setMatrixUniforms() {
-        gl.uniformMatrix4fv(shaderProgram_q.pMatrixUniform, false, pMatrix);
-        gl.uniformMatrix4fv(shaderProgram_q.mvMatrixUniform, false, mvMatrix);
+	function setMatrixUniforms() {
+		gl.uniformMatrix4fv(shaderProgram_q.pMatrixUniform, false, pMatrix);
+		gl.uniformMatrix4fv(shaderProgram_q.mvMatrixUniform, false, mvMatrix);
 		gl.uniform2fv(shaderProgram_q.mSZUniform, map.mSZ);
 		gl.uniform1i(shaderProgram_q.num_QUniform, map.mQ.length);
 		for( var i=0; i < map.mQ.length; ++i){
 			gl.uniform4fv(gl.getUniformLocation(shaderProgram_q, "mQ["+i+"]"), map.mQ[i]);
 		}
-    }
+	}
 
 
-    function degToRad(degrees) {
-        return degrees * Math.PI / 180;
-    }
+	function degToRad(degrees) {
+		return degrees * Math.PI / 180;
+	}
 
 
-    var squareVertexPositionBuffer;
+	var squareVertexPositionBuffer;
 	var squareTexcoordBuffer;
 	var squareIndicesBuffer;
 	
@@ -346,38 +331,38 @@ $(function(){
 	var circleIndicesBuffer;
 	
 
-    function initBuffers() {
+	function initBuffers() {
 		var hw = 0.5 * gl.viewportWidth;
 		var hh = 0.5 * gl.viewportHeight;
 	
-        squareVertexPositionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-        vertices = [
+		squareVertexPositionBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+		vertices = [
 			-hw,	-hh,	0.0,
 			+hw,	-hh,	0.0,
 			+hw,	+hh,	0.0,
 			-hw,	+hh,	0.0,
-        ];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        squareVertexPositionBuffer.itemSize = 3;
-        squareVertexPositionBuffer.numItems = 4;
+		];
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+		squareVertexPositionBuffer.itemSize = 3;
+		squareVertexPositionBuffer.numItems = 4;
 		
 		
 		squareTexcoordBuffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
-        texcoords = [
+		texcoords = [
 			0.0, 0.0,
 			1.0, 0.0,
 			1.0, 1.0,
 			0.0, 1.0,
 		];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
 		squareTexcoordBuffer.itemSize = 2;
-        squareTexcoordBuffer.numItems = 4;
+		squareTexcoordBuffer.numItems = 4;
 		
 		
 		squareIndicesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
 		indices = [
 			0,1,2,
 			0,2,3
@@ -389,46 +374,46 @@ $(function(){
 		
 		// кружок
 		circleVertexPositionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, circleVertexPositionBuffer);
-        vertices2 = [
+		gl.bindBuffer(gl.ARRAY_BUFFER, circleVertexPositionBuffer);
+		vertices2 = [
 			-map.q_radius,	-map.q_radius,	1.0,
 			+map.q_radius,	-map.q_radius,	1.0,
 			+map.q_radius,	+map.q_radius,	1.0,
 			-map.q_radius,	+map.q_radius,	1.0,
-        ];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices2), gl.STATIC_DRAW);
-        circleVertexPositionBuffer.itemSize = 3;
-        circleVertexPositionBuffer.numItems = 4;
+		];
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices2), gl.STATIC_DRAW);
+		circleVertexPositionBuffer.itemSize = 3;
+		circleVertexPositionBuffer.numItems = 4;
 		
 		
 		circleTexcoordBuffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, circleTexcoordBuffer);
-        texcoords2 = [
+		texcoords2 = [
 			0.0, 0.0,
 			1.0, 0.0,
 			1.0, 1.0,
 			0.0, 1.0,
 		];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords2), gl.STATIC_DRAW);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords2), gl.STATIC_DRAW);
 		circleTexcoordBuffer.itemSize = 2;
-        circleTexcoordBuffer.numItems = 4;
+		circleTexcoordBuffer.numItems = 4;
 		
 		
 		circleColorBuffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, circleColorBuffer);
-        colors2 = [
+		colors2 = [
 			1.0, 1.0, 1.0, 1.0,
 			1.0, 0.0, 1.0, 1.0,
 			1.0, 1.0, 0.0, 1.0,
 			1.0, 1.0, 1.0, 1.0
 		];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors2), gl.STATIC_DRAW);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors2), gl.STATIC_DRAW);
 		circleColorBuffer.itemSize = 4;
-        circleColorBuffer.numItems = 4;
+		circleColorBuffer.numItems = 4;
 		
 		
 		circleIndicesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, circleIndicesBuffer);
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, circleIndicesBuffer);
 		indices2 = [
 			0,1,2,
 			0,2,3
@@ -436,41 +421,41 @@ $(function(){
 		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices2), gl.STATIC_DRAW);
 		circleIndicesBuffer.num = 6;
 		
-    }
+	}
 
-    var rTri = 0;
-    var rSquare = 0;
+	var rTri = 0;
+	var rSquare = 0;
 
-    function drawScene() {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	function drawScene() {
+		gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 		mat4.ortho(pMatrix, -0.5*gl.viewportWidth, 0.5*gl.viewportWidth, -0.5*gl.viewportHeight, 0.5*gl.viewportHeight, 0.1, 100.0 );
-        mat4.identity(mvMatrix);
-        mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, -10.0]);
+		mat4.identity(mvMatrix);
+		mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, -10.0]);
 		
 		//	Отрисовка поля
 
-        mvPushMatrix();
-        mat4.rotate(mvMatrix, mvMatrix, degToRad(rSquare), [1, 0, 0]);
+		mvPushMatrix();
+		mat4.rotate(mvMatrix, mvMatrix, degToRad(rSquare), [1, 0, 0]);
 	 	
 	 	gl.useProgram(shaderProgram_q);
 	 	gl.enableVertexAttribArray(shaderProgram_q.vertexPositionAttribute);
 	 	gl.enableVertexAttribArray(shaderProgram_q.vertexTexcoordAttribute);
 	 	
 	 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
-     
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram_q.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-     
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
-        gl.vertexAttribPointer(shaderProgram_q.vertexTexcoordAttribute, squareTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
-     
-        setMatrixUniforms();
+	 
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+		gl.vertexAttribPointer(shaderProgram_q.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	 
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
+		gl.vertexAttribPointer(shaderProgram_q.vertexTexcoordAttribute, squareTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	 
+		setMatrixUniforms();
 	 	
 	 	gl.drawElements(gl.TRIANGLES, squareIndicesBuffer.num, gl.UNSIGNED_SHORT, 0);
 	 	
-        mvPopMatrix();
+		mvPopMatrix();
 	 	
 	 	gl.disableVertexAttribArray(shaderProgram_q.vertexPositionAttribute);
 	 	gl.disableVertexAttribArray(shaderProgram_q.vertexTexcoordAttribute);
@@ -497,50 +482,50 @@ $(function(){
 			
 		}
 
-    }
+	}
 
 
-    var lastTime = 0;
+	var lastTime = 0;
 
-    function animate() {
-        var timeNow = new Date().getTime();
-        if (lastTime != 0) {
-            var elapsed = timeNow - lastTime;
+	function animate() {
+		var timeNow = new Date().getTime();
+		if (lastTime != 0) {
+			var elapsed = timeNow - lastTime;
 
-            //rTri += (90 * elapsed) / 1000.0;
-            //rSquare += (75 * elapsed) / 1000.0;
+			//rTri += (90 * elapsed) / 1000.0;
+			//rSquare += (75 * elapsed) / 1000.0;
 			
-        }
-        lastTime = timeNow;
-    }
+		}
+		lastTime = timeNow;
+	}
 
 
-    function tick() {
-        requestAnimFrame(tick);
-        drawScene();
-        animate();
-    }
+	function tick() {
+		requestAnimFrame(tick);
+		drawScene();
+		animate();
+	}
 
 
-    function webGLStart() {
-        var canvas = document.getElementById("shader-canvas");
+	function webGLStart() {
+		var canvas = document.getElementById("shader-canvas");
 		var can = $(canvas);
 		
 		vec2.set( map.mSZ, can.width(), can.height() );
 		canvas.width = map.mSZ[0];
 		canvas.height = map.mSZ[1];
 		
-        initGL(canvas);
-        initShaders()
-        initBuffers();
+		initGL(canvas);
+		initShaders()
+		initBuffers();
 		
 		map_init();
 
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.enable(gl.DEPTH_TEST);
+		gl.clearColor(0.0, 0.0, 0.0, 1.0);
+		gl.enable(gl.DEPTH_TEST);
 
-        tick();
-    }
+		tick();
+	}
 	
 	
 	
@@ -552,24 +537,24 @@ $(function(){
 		
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, circleIndicesBuffer);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, circleVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram_std.vertexPositionAttribute, circleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		gl.bindBuffer(gl.ARRAY_BUFFER, circleVertexPositionBuffer);
+		gl.vertexAttribPointer(shaderProgram_std.vertexPositionAttribute, circleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, circleTexcoordBuffer);
-        gl.vertexAttribPointer(shaderProgram_std.vertexTexcoordAttribute, circleTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		gl.bindBuffer(gl.ARRAY_BUFFER, circleTexcoordBuffer);
+		gl.vertexAttribPointer(shaderProgram_std.vertexTexcoordAttribute, circleTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
 		
 		gl.bindBuffer(gl.ARRAY_BUFFER, circleColorBuffer);
-        gl.vertexAttribPointer(shaderProgram_std.vertexColorAttribute, circleColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		gl.vertexAttribPointer(shaderProgram_std.vertexColorAttribute, circleColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        // setup matrix
+		// setup matrix
 		gl.uniformMatrix4fv(shaderProgram_std.pMatrixUniform, false, pMatrix);
-        gl.uniformMatrix4fv(shaderProgram_std.mvMatrixUniform, false, mvMatrix);
+		gl.uniformMatrix4fv(shaderProgram_std.mvMatrixUniform, false, mvMatrix);
 		
 		gl.drawElements(gl.TRIANGLES, circleIndicesBuffer.num, gl.UNSIGNED_SHORT, 0);
 		
 		var err = gl.getError();
 
-        mvPopMatrix();
+		mvPopMatrix();
 		
 	}
 	
@@ -596,8 +581,8 @@ $(function(){
 	
 	$('#shader-canvas')
 	.contextmenu(function(){
-       return false;
-    })
+	   return false;
+	})
 	.on('vmousedown',function(e) {
 		
 		var q = vec4.create();
@@ -740,7 +725,7 @@ $(function(){
 		canvas.height = map.mSZ[1];
 		
 		gl.viewportWidth = map.mSZ[0];
-        gl.viewportHeight = map.mSZ[1];
+		gl.viewportHeight = map.mSZ[1];
 		
 		initBuffers();
 	})
@@ -832,9 +817,9 @@ div.inline_flip{
 <body>
 <!-- Home -->
 <div data-role="page" id="page1">
-    <div data-role="content" class="nopad">
+	<div data-role="content" class="nopad">
 		<canvas id="shader-canvas"></canvas>
-    </div>
+	</div>
 	<div data-theme="a" data-role="footer" class="ui-bar" data-position="fixed" data-tap-toggle="false" id="ftr">
 		<a href="#" class="up" data-icon="delete" id="q_delete">&nbsp;</a>
 		<a href="#" class="up" data-icon="home" id="q_clear_all">&nbsp;</a>
@@ -856,7 +841,6 @@ div.inline_flip{
 			<label for="qulon_slider" class="ui-hidden-accessible">Qulon slider:</label>
 			<input name="qulon_slider" id="qulon_slider" value="0" min="-250" max="250" step="1" type="range">
 		</div>
-
 	</div>
 </div>
 </body>
