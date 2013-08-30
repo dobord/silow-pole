@@ -529,10 +529,7 @@ $(function(){
         initShaders()
         initBuffers();
 		
-		map.mQ.push( vec4.fromValues(20,15,1000,0) );
-		map.mQ.push( vec4.fromValues(-20,0,-1000,0) );
-		
-		map.is_show_q = $('#show_q_switch').val() == 'on';
+		map_init();
 
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
@@ -764,7 +761,7 @@ $(function(){
 	
 	
 	
-	$('#qulon_slider').on( "slidestop", function( event, ui ) {
+	$('#qulon_slider').on( "change", function( event, ui ) {
 		if( map.sel_q !== null ){
 			map.mQ[ map.sel_q ][2] = $(this).val();
 		}
@@ -785,7 +782,17 @@ $(function(){
 		height:		page1.height()
 	};
 	$('#shader-canvas').css( canvas_css );
+	
 	webGLStart();
+	
+	function map_init(){
+	
+		map.mQ.push( vec4.fromValues(20,15,100,0) );
+		map.mQ.push( vec4.fromValues(-20,0,-100,0) );
+		
+		map.is_show_q = $('#show_q_switch').val() == 'on';
+		
+	}
 
 });
 </script>
@@ -858,7 +865,7 @@ div.inline_flip{
 		</div>
 		<div class="inline">
 			<label for="qulon_slider" class="ui-hidden-accessible">Qulon slider:</label>
-			<input name="qulon_slider" id="qulon_slider" value="0" min="-1000" max="1000" type="range">
+			<input name="qulon_slider" id="qulon_slider" value="0" min="-250" max="250" step="1" type="range">
 		</div>
 
 	</div>
