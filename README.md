@@ -19,3 +19,4 @@ silow-pole
 ----------
 
   + Google Chrome   Windows 7   (проверено на версии 29.0.1547.62)
+  + Opera           Windows 7   (проверено на версии 16.0.1196.62)
