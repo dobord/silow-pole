@@ -5,6 +5,8 @@ silow-pole
 
 Используется HTML5, JavaScript, WebGL (OpenGL ES Shading Languange 2.0)
 
+<http://dobord.github.io/silow-pole/silow-pole.html>
+
 
 Рекомендуемая конфигурация:
 ----------
