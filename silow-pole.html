@@ -194,9 +194,10 @@ $(function(){
 	function initGL(canvas) {
 	
 		try {
-			gl = canvas.getContext("experimental-webgl");
-			gl = WebGLDebugUtils.makeDebugContext(gl, throwOnGLError, logAndValidate);
-			gl.is_trace_webgl = false;
+			gl = canvas.getContext("webgl");
+			//gl = canvas.getContext("experimental-webgl");
+			//gl = WebGLDebugUtils.makeDebugContext(gl, throwOnGLError, logAndValidate);
+			gl.is_trace_webgl = true;
 			gl.viewportWidth = map.mSZ[0];
 			gl.viewportHeight = map.mSZ[1];
 		} catch (e) {
