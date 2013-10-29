@@ -195,10 +195,11 @@ $(function(){
 	
 		try {
 			try{
-				gl = canvas.getContext("webgl");
+				gl = canvas.getContext("experimental-webgl");
+				
 			}
 			catch(e){
-				gl = canvas.getContext("experimental-webgl");
+				gl = canvas.getContext("webgl");
 			}
 			//gl = canvas.getContext("experimental-webgl");
 			//gl = WebGLDebugUtils.makeDebugContext(gl, throwOnGLError, logAndValidate);
