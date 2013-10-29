@@ -194,7 +194,12 @@ $(function(){
 	function initGL(canvas) {
 	
 		try {
-			gl = canvas.getContext("webgl");
+			try{
+				gl = canvas.getContext("webgl");
+			}
+			catch(e){
+				gl = canvas.getContext("experimental-webgl");
+			}
 			//gl = canvas.getContext("experimental-webgl");
 			//gl = WebGLDebugUtils.makeDebugContext(gl, throwOnGLError, logAndValidate);
 			gl.is_trace_webgl = true;
