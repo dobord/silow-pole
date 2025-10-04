@@ -41,26 +41,31 @@
 	// массив значений потенциала для эквипот-х линий
 	uniform	float prec_phi ; 	// относит. точн. потенц. [= 0.05]
 	
+	// параметр компрессии для визуализации
+	uniform float compression;	// [0.1 - 2.0], default = 1.0
 	
 	varying vec2 vTexcoord;
 	
 	
 	vec4 phi2vec4(float phi)
 	{
+		// Применяем компрессию к потенциалу
+		float compressed_phi = sign(phi) * pow(abs(phi), compression);
+		
 		vec4 color;
-		if (phi>0.0)
+		if (compressed_phi>0.0)
 		{
-			if(phi>1.0)
-				color = vec4(1.0,1.0-1.0/phi,0.0,1.0);
+			if(compressed_phi>1.0)
+				color = vec4(1.0,1.0-1.0/compressed_phi,0.0,1.0);
 			else
-				color = vec4(phi,0.0,0.0,1.0);	
+				color = vec4(compressed_phi,0.0,0.0,1.0);	
 		}
 		else
 		{
-			if(phi<-1.0)
-				color = vec4(0.0,1.0+1.0/phi,1.0,1.0);
+			if(compressed_phi<-1.0)
+				color = vec4(0.0,1.0+1.0/compressed_phi,1.0,1.0);
 			else
-				color = vec4(0.0,0.0,-phi,1.0);
+				color = vec4(0.0,0.0,-compressed_phi,1.0);
 		}			   
 		return color;
 	}
@@ -289,6 +294,7 @@ $(function(){
 		shaderProgram_q.mPhiUniform = gl.getUniformLocation(shaderProgram_q, "mPhi");
 		shaderProgram_q.num_PhiUniform = gl.getUniformLocation(shaderProgram_q, "num_Phi");
 		shaderProgram_q.prec_phiUniform = gl.getUniformLocation(shaderProgram_q, "prec_phi");
+		shaderProgram_q.compressionUniform = gl.getUniformLocation(shaderProgram_q, "compression");
 		
 		//	шейдер-программа для простого рисования
 		
@@ -341,7 +347,8 @@ $(function(){
 		q_radius	: 15,
 		mPhi		: [],
 		prec_phi	: 0.05,	//	умалчиваемая точнось экв. пот. поверхностей
-		is_show_line: false
+		is_show_line: false,
+		compression	: 1.0	//	параметр компрессии визуализации (0.1 - 2.0)
 	};
 
 	function mvPushMatrix() {
@@ -371,6 +378,7 @@ $(function(){
 			gl.uniform1f(gl.getUniformLocation(shaderProgram_q, "mPhi["+i+"]"), map.mPhi[i]);
 		}
 		gl.uniform1f(shaderProgram_q.prec_phiUniform, map.prec_phi);
+		gl.uniform1f(shaderProgram_q.compressionUniform, map.compression);
 	}
 
 
@@ -1117,6 +1125,16 @@ $(function(){
 		return false;
 	});
 	
+	$('#compression_slider').on( "change", function( event, ui ) {
+		map.compression = parseFloat($(this).val());
+		$('#compression_value').text(map.compression.toFixed(2));
+	});
+	
+	$('#prec_phi_slider').on( "change", function( event, ui ) {
+		map.prec_phi = parseFloat($(this).val());
+		$('#prec_phi_value').text(map.prec_phi.toFixed(2));
+	});
+	
 	webGLStart();
 	
 	function map_init(){
@@ -1212,6 +1230,7 @@ div.inline_flip{
 			<input name="qulon_slider" id="qulon_slider" value="0" min="-250" max="250" step="1" type="range">
 		</div>
 		<a href="#phi_panel" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-grid ui-btn-icon-left ui-btn-a">Φ Levels</a>
+		<a href="#settings_panel" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-gear ui-btn-icon-left ui-btn-a">Settings</a>
 	</div>
 	
 	<!-- Popup panel for equipotential levels -->
@@ -1229,6 +1248,26 @@ div.inline_flip{
 			<ul data-role="listview" data-inset="true" id="phi_list">
 			</ul>
 			<a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-inline="true">Close</a>
+		</div>
+	</div>
+	
+	<!-- Popup panel for settings -->
+	<div data-role="popup" id="settings_panel" data-theme="a" class="ui-corner-all">
+		<div data-role="header" data-theme="a">
+			<h1>Visualization Settings</h1>
+		</div>
+		<div data-role="content" data-theme="d" class="ui-corner-bottom ui-content">
+			<div data-role="fieldcontain">
+				<label for="compression_slider">Compression (0.1 - 2.0):</label>
+				<input name="compression_slider" id="compression_slider" value="1.0" min="0.1" max="2.0" step="0.05" type="range" data-highlight="true">
+				<div id="compression_value" style="text-align:center; font-weight:bold;">1.0</div>
+			</div>
+			<div data-role="fieldcontain">
+				<label for="prec_phi_slider">Equipotential precision:</label>
+				<input name="prec_phi_slider" id="prec_phi_slider" value="0.05" min="0.01" max="0.2" step="0.01" type="range" data-highlight="true">
+				<div id="prec_phi_value" style="text-align:center; font-weight:bold;">0.05</div>
+			</div>
+			<a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="check" data-inline="true">Close</a>
 		</div>
 	</div>
 </div>
