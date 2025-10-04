@@ -1455,7 +1455,117 @@ $(function(){
 		map.mPhi = [];
 		map.sel_q = null;
 		map.is_drag = false;
+		updatePhiList();
 		
+	}
+	
+	/**
+	 * Экспорт сцены в JSON
+	 */
+	function exportScene() {
+		var scene = {
+			version: "1.0",
+			timestamp: new Date().toISOString(),
+			charges: [],
+			equipotentials: [],
+			settings: {
+				compression: map.compression,
+				prec_phi: map.prec_phi,
+				palette: map.palette,
+				useRTT: useRTT
+			}
+		};
+		
+		// Конвертируем vec4 в массивы
+		for (var i = 0; i < map.mQ.length; i++) {
+			scene.charges.push([map.mQ[i][0], map.mQ[i][1], map.mQ[i][2], map.mQ[i][3]]);
+		}
+		
+		scene.equipotentials = map.mPhi.slice();
+		
+		return JSON.stringify(scene, null, 2);
+	}
+	
+	/**
+	 * Импорт сцены из JSON
+	 */
+	function importScene(jsonStr) {
+		try {
+			var scene = JSON.parse(jsonStr);
+			
+			// Очищаем текущую сцену
+			map.mQ = [];
+			map.mPhi = [];
+			
+			// Загружаем заряды
+			if (scene.charges) {
+				for (var i = 0; i < scene.charges.length && i < 16; i++) {
+					var c = scene.charges[i];
+					map.mQ.push(vec4.fromValues(c[0], c[1], c[2], c[3] || 0));
+				}
+			}
+			
+			// Загружаем эквипотенциали
+			if (scene.equipotentials) {
+				map.mPhi = scene.equipotentials.slice(0, 16);
+			}
+			
+			// Загружаем настройки
+			if (scene.settings) {
+				if (scene.settings.compression !== undefined) {
+					map.compression = scene.settings.compression;
+					$('#compression_slider').val(map.compression).slider('refresh');
+					$('#compression_value').text(map.compression.toFixed(2));
+				}
+				if (scene.settings.prec_phi !== undefined) {
+					map.prec_phi = scene.settings.prec_phi;
+					$('#prec_phi_slider').val(map.prec_phi).slider('refresh');
+					$('#prec_phi_value').text(map.prec_phi.toFixed(2));
+				}
+				if (scene.settings.palette !== undefined) {
+					map.palette = scene.settings.palette;
+					$('#palette_select').val(map.palette).selectmenu('refresh');
+				}
+				if (scene.settings.useRTT !== undefined) {
+					useRTT = scene.settings.useRTT;
+					$('#rtt_switch').val(useRTT ? 'on' : 'off').slider('refresh');
+				}
+			}
+			
+			updatePhiList();
+			return true;
+		} catch (e) {
+			console.error("Failed to import scene:", e);
+			alert("Failed to import scene: " + e.message);
+			return false;
+		}
+	}
+	
+	/**
+	 * Скачать сцену как файл
+	 */
+	function downloadScene() {
+		var json = exportScene();
+		var blob = new Blob([json], {type: 'application/json'});
+		var url = URL.createObjectURL(blob);
+		var a = document.createElement('a');
+		a.href = url;
+		a.download = 'silow-pole-scene-' + Date.now() + '.json';
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+	
+	/**
+	 * Загрузить сцену из файла
+	 */
+	function uploadScene(file) {
+		var reader = new FileReader();
+		reader.onload = function(e) {
+			importScene(e.target.result);
+		};
+		reader.readAsText(file);
 	}
 	
 	
@@ -1589,6 +1699,19 @@ $(function(){
 		$('#prec_phi_value').text(map.prec_phi.toFixed(2));
 	});
 	
+	$('#export_scene_btn').click(function(){
+		downloadScene();
+		return false;
+	});
+	
+	$('#import_file').on('change', function(e){
+		var file = e.target.files[0];
+		if (file) {
+			uploadScene(file);
+			$(this).val(''); // reset input
+		}
+	});
+	
 	webGLStart();
 	
 	function map_init(){
@@ -1685,6 +1808,7 @@ div.inline_flip{
 		</div>
 		<a href="#phi_panel" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-grid ui-btn-icon-left ui-btn-a">Φ Levels</a>
 		<a href="#settings_panel" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-gear ui-btn-icon-left ui-btn-a">Settings</a>
+		<a href="#scene_panel" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-action ui-btn-icon-left ui-btn-a">Scene</a>
 	</div>
 	
 	<!-- Popup panel for equipotential levels -->
@@ -1738,6 +1862,22 @@ div.inline_flip{
 				<div id="prec_phi_value" style="text-align:center; font-weight:bold;">0.05</div>
 			</div>
 			<a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="check" data-inline="true">Close</a>
+		</div>
+	</div>
+	
+	<!-- Popup panel for scene import/export -->
+	<div data-role="popup" id="scene_panel" data-theme="a" class="ui-corner-all">
+		<div data-role="header" data-theme="a">
+			<h1>Scene Management</h1>
+		</div>
+		<div data-role="content" data-theme="d" class="ui-corner-bottom ui-content">
+			<p>Save and load scene configurations:</p>
+			<a href="#" id="export_scene_btn" data-role="button" data-icon="arrow-d" data-inline="true">Export Scene</a>
+			<div data-role="fieldcontain">
+				<label for="import_file" style="display:block; margin-bottom:10px;">Import Scene:</label>
+				<input type="file" id="import_file" accept=".json" style="display:block;">
+			</div>
+			<a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-inline="true">Close</a>
 		</div>
 	</div>
 </div>
