@@ -953,7 +953,45 @@ $(function(){
 		}
 		
 		map.mPhi.push( phi );
+		updatePhiList();
 		
+	}
+	
+	/**
+	*	Обновление списка эквипотенциалей в UI
+	*/
+	function updatePhiList(){
+		var list = $('#phi_list');
+		list.empty();
+		
+		for( var i = 0; i < map.mPhi.length; ++i ){
+			var item = $('<li data-icon="delete">').appendTo(list);
+			var link = $('<a href="#">').text('Φ' + (i+1) + ' = ' + map.mPhi[i].toFixed(2)).appendTo(item);
+			
+			(function(index){
+				link.click(function(){
+					map.mPhi.splice(index, 1);
+					updatePhiList();
+					return false;
+				});
+			})(i);
+		}
+		
+		list.listview('refresh');
+	}
+	
+	/**
+	*	Добавление эквипотенциали по значению
+	*/
+	function addPhiByValue(value){
+		if( map.mPhi.length >= 16 )
+			return;
+			
+		var phi = parseFloat(value);
+		if( !isNaN(phi) ){
+			map.mPhi.push(phi);
+			updatePhiList();
+		}
 	}
 	
 	
@@ -1048,6 +1086,7 @@ $(function(){
 		}
 		else{
 			map.mPhi = [];
+			updatePhiList();
 		}
 	})
 	
@@ -1069,6 +1108,13 @@ $(function(){
 	
 	$('#show_line_switch').on( "slidestop", function( event, ui ) {
 		map.is_show_line= $(this).val() == 'on';
+	});
+	
+	$('#add_phi_btn').click(function(){
+		var value = $('#phi_input').val();
+		addPhiByValue(value);
+		$('#phi_input').val('0');
+		return false;
 	});
 	
 	webGLStart();
@@ -1164,6 +1210,25 @@ div.inline_flip{
 		<div class="inline">
 			<label for="qulon_slider" class="ui-hidden-accessible">Qulon slider:</label>
 			<input name="qulon_slider" id="qulon_slider" value="0" min="-250" max="250" step="1" type="range">
+		</div>
+		<a href="#phi_panel" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-grid ui-btn-icon-left ui-btn-a">Φ Levels</a>
+	</div>
+	
+	<!-- Popup panel for equipotential levels -->
+	<div data-role="popup" id="phi_panel" data-theme="a" class="ui-corner-all">
+		<div data-role="header" data-theme="a">
+			<h1>Equipotential Levels</h1>
+		</div>
+		<div data-role="content" data-theme="d" class="ui-corner-bottom ui-content">
+			<p>Manage equipotential surfaces:</p>
+			<div data-role="fieldcontain">
+				<label for="phi_input">Add Φ value:</label>
+				<input type="number" name="phi_input" id="phi_input" value="0" step="0.1">
+				<a href="#" id="add_phi_btn" data-role="button" data-mini="true" data-inline="true" data-icon="plus">Add</a>
+			</div>
+			<ul data-role="listview" data-inset="true" id="phi_list">
+			</ul>
+			<a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-inline="true">Close</a>
 		</div>
 	</div>
 </div>
