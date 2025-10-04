@@ -205,6 +205,155 @@
 	}
 </script>
 
+<script id="rtt-compute-fs" type="x-shader/x-fragment">
+	precision mediump float;
+	
+	const int max_num_Q = 16;
+	
+	uniform vec2 mSZ;
+	uniform vec4 mQ[ max_num_Q ];
+	uniform int num_Q;
+	
+	varying vec2 vTexcoord;
+	
+	void main(void) {
+		vec2 pos = (vTexcoord - vec2(0.5)) * mSZ;
+		
+		float phi = 0.0;
+		
+		for( int i=0; i < max_num_Q; ++i){
+			if( i >= num_Q )
+				break;
+			phi += mQ[i].z / distance( pos, mQ[i].xy );
+		}
+		
+		// Кодируем float в RGBA для WebGL1
+		// Нормализуем phi в диапазон [0, 1]
+		float normalized = (phi + 100.0) / 200.0;
+		normalized = clamp(normalized, 0.0, 1.0);
+		
+		gl_FragColor = vec4(normalized, 0.0, 0.0, 1.0);
+	}
+</script>
+
+<script id="rtt-display-fs" type="x-shader/x-fragment">
+	precision mediump float;
+	
+	const int max_num_Phi = 16;
+	
+	uniform sampler2D uPotentialTexture;
+	uniform float mPhi[ max_num_Phi ]; 
+	uniform int num_Phi;
+	uniform float prec_phi;
+	uniform float compression;
+	uniform int palette;
+	
+	varying vec2 vTexcoord;
+	
+	// Classic palette (red-blue)
+	vec4 palette_classic(float phi) {
+		vec4 color;
+		if (phi>0.0)
+		{
+			if(phi>1.0)
+				color = vec4(1.0,1.0-1.0/phi,0.0,1.0);
+			else
+				color = vec4(phi,0.0,0.0,1.0);	
+		}
+		else
+		{
+			if(phi<-1.0)
+				color = vec4(0.0,1.0+1.0/phi,1.0,1.0);
+			else
+				color = vec4(0.0,0.0,-phi,1.0);
+		}
+		return color;
+	}
+	
+	vec4 palette_heat(float phi) {
+		float t = (phi + 2.0) / 4.0;
+		t = clamp(t, 0.0, 1.0);
+		
+		vec4 color;
+		if (t < 0.33) {
+			float s = t / 0.33;
+			color = vec4(s, 0.0, 0.0, 1.0);
+		} else if (t < 0.66) {
+			float s = (t - 0.33) / 0.33;
+			color = vec4(1.0, s, 0.0, 1.0);
+		} else {
+			float s = (t - 0.66) / 0.34;
+			color = vec4(1.0, 1.0, s, 1.0);
+		}
+		return color;
+	}
+	
+	vec4 palette_cool(float phi) {
+		float t = (phi + 2.0) / 4.0;
+		t = clamp(t, 0.0, 1.0);
+		return vec4(t, 1.0 - t, 1.0, 1.0);
+	}
+	
+	vec4 palette_rainbow(float phi) {
+		float t = (phi + 2.0) / 4.0;
+		t = clamp(t, 0.0, 1.0);
+		t = t * 6.0;
+		
+		vec4 color;
+		if (t < 1.0) {
+			color = vec4(1.0, t, 0.0, 1.0);
+		} else if (t < 2.0) {
+			color = vec4(2.0 - t, 1.0, 0.0, 1.0);
+		} else if (t < 3.0) {
+			color = vec4(0.0, 1.0, t - 2.0, 1.0);
+		} else if (t < 4.0) {
+			color = vec4(0.0, 4.0 - t, 1.0, 1.0);
+		} else if (t < 5.0) {
+			color = vec4(t - 4.0, 0.0, 1.0, 1.0);
+		} else {
+			color = vec4(1.0, 0.0, 6.0 - t, 1.0);
+		}
+		return color;
+	}
+	
+	vec4 phi2vec4(float phi) {
+		float compressed_phi = sign(phi) * pow(abs(phi), compression);
+		
+		vec4 color;
+		if (palette == 1) {
+			color = palette_heat(compressed_phi);
+		} else if (palette == 2) {
+			color = palette_cool(compressed_phi);
+		} else if (palette == 3) {
+			color = palette_rainbow(compressed_phi);
+		} else {
+			color = palette_classic(compressed_phi);
+		}
+		return color;
+	}
+	
+	void main(void) {
+		// Читаем потенциал из текстуры
+		float normalized = texture2D(uPotentialTexture, vTexcoord).r;
+		float phi = normalized * 200.0 - 100.0;
+		
+		gl_FragColor = phi2vec4(phi);
+		
+		// эквипотенциальные линии		
+		for( int i=0; i < max_num_Phi; ++i ){
+			if( i >= num_Phi )
+				break;
+		
+			float fp = abs( (phi-mPhi[i])/mPhi[i] )/prec_phi;
+			
+			if ( fp <= 1.0 ){
+				fp = sqrt( 1.0 - fp*fp )*0.8;
+				gl_FragColor = mix( gl_FragColor, vec4(0.0,1.0,0.0,1.0), fp );
+			}
+		}
+	}
+</script>
+
 <script id="std-shader-vs" type="x-shader/x-vertex">
 	precision mediump float;
 	
@@ -325,7 +474,10 @@ $(function(){
 	}
 
 
-	var shaderProgram_q, shaderProgram_std;
+	var shaderProgram_q, shaderProgram_std, shaderProgram_rtt_compute, shaderProgram_rtt_display;
+	var rttFramebuffer = null;
+	var rttTexture = null;
+	var useRTT = false; // флаг использования RTT
 
 	function initShaders() {
 		
@@ -400,6 +552,84 @@ $(function(){
 		
 		shaderProgram_std.pMatrixUniform = gl.getUniformLocation(shaderProgram_std, "uPMatrix");
 		shaderProgram_std.mvMatrixUniform = gl.getUniformLocation(shaderProgram_std, "uMVMatrix");
+		
+		//	шейдер-программа для RTT compute
+		gl.useProgram(null);
+		
+		var fragmentShader3 = getShader(gl, "rtt-compute-fs");
+		var vertexShader3 = getShader(gl, "shader-vs");
+		
+		shaderProgram_rtt_compute = gl.createProgram();
+		gl.attachShader(shaderProgram_rtt_compute, vertexShader3);
+		gl.attachShader(shaderProgram_rtt_compute, fragmentShader3);
+		gl.linkProgram(shaderProgram_rtt_compute);
+		
+		if (!gl.getProgramParameter(shaderProgram_rtt_compute, gl.LINK_STATUS)) {
+			alert("Could not initialise RTT compute shader");
+		}
+		
+		gl.useProgram(shaderProgram_rtt_compute);
+		
+		shaderProgram_rtt_compute.vertexPositionAttribute = gl.getAttribLocation(shaderProgram_rtt_compute, "aVertexPosition");
+		shaderProgram_rtt_compute.vertexTexcoordAttribute = gl.getAttribLocation(shaderProgram_rtt_compute, "aVertexTexcoord");
+		shaderProgram_rtt_compute.pMatrixUniform = gl.getUniformLocation(shaderProgram_rtt_compute, "uPMatrix");
+		shaderProgram_rtt_compute.mvMatrixUniform = gl.getUniformLocation(shaderProgram_rtt_compute, "uMVMatrix");
+		shaderProgram_rtt_compute.mSZUniform = gl.getUniformLocation(shaderProgram_rtt_compute, "mSZ");
+		shaderProgram_rtt_compute.mQUniform = gl.getUniformLocation(shaderProgram_rtt_compute, "mQ");
+		shaderProgram_rtt_compute.num_QUniform = gl.getUniformLocation(shaderProgram_rtt_compute, "num_Q");
+		
+		//	шейдер-программа для RTT display
+		gl.useProgram(null);
+		
+		var fragmentShader4 = getShader(gl, "rtt-display-fs");
+		var vertexShader4 = getShader(gl, "shader-vs");
+		
+		shaderProgram_rtt_display = gl.createProgram();
+		gl.attachShader(shaderProgram_rtt_display, vertexShader4);
+		gl.attachShader(shaderProgram_rtt_display, fragmentShader4);
+		gl.linkProgram(shaderProgram_rtt_display);
+		
+		if (!gl.getProgramParameter(shaderProgram_rtt_display, gl.LINK_STATUS)) {
+			alert("Could not initialise RTT display shader");
+		}
+		
+		gl.useProgram(shaderProgram_rtt_display);
+		
+		shaderProgram_rtt_display.vertexPositionAttribute = gl.getAttribLocation(shaderProgram_rtt_display, "aVertexPosition");
+		shaderProgram_rtt_display.vertexTexcoordAttribute = gl.getAttribLocation(shaderProgram_rtt_display, "aVertexTexcoord");
+		shaderProgram_rtt_display.pMatrixUniform = gl.getUniformLocation(shaderProgram_rtt_display, "uPMatrix");
+		shaderProgram_rtt_display.mvMatrixUniform = gl.getUniformLocation(shaderProgram_rtt_display, "uMVMatrix");
+		shaderProgram_rtt_display.potentialTextureUniform = gl.getUniformLocation(shaderProgram_rtt_display, "uPotentialTexture");
+		shaderProgram_rtt_display.mPhiUniform = gl.getUniformLocation(shaderProgram_rtt_display, "mPhi");
+		shaderProgram_rtt_display.num_PhiUniform = gl.getUniformLocation(shaderProgram_rtt_display, "num_Phi");
+		shaderProgram_rtt_display.prec_phiUniform = gl.getUniformLocation(shaderProgram_rtt_display, "prec_phi");
+		shaderProgram_rtt_display.compressionUniform = gl.getUniformLocation(shaderProgram_rtt_display, "compression");
+		shaderProgram_rtt_display.paletteUniform = gl.getUniformLocation(shaderProgram_rtt_display, "palette");
+	}
+	
+	function initRTT() {
+		// Создаем текстуру для RTT
+		rttTexture = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.viewportWidth, gl.viewportHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+		
+		// Создаем framebuffer
+		rttFramebuffer = gl.createFramebuffer();
+		gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rttTexture, 0);
+		
+		// Проверяем статус framebuffer
+		var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+		if (status !== gl.FRAMEBUFFER_COMPLETE) {
+			console.error("Framebuffer not complete: " + status);
+		}
+		
+		gl.bindTexture(gl.TEXTURE_2D, null);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	}
 
 
@@ -698,30 +928,108 @@ $(function(){
 		mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, -10.0]);
 		
 		//	Отрисовка поля
-
-		mvPushMatrix();
-		mat4.rotate(mvMatrix, mvMatrix, degToRad(rSquare), [1, 0, 0]);
-	 	
-	 	gl.useProgram(shaderProgram_q);
-	 	gl.enableVertexAttribArray(shaderProgram_q.vertexPositionAttribute);
-	 	gl.enableVertexAttribArray(shaderProgram_q.vertexTexcoordAttribute);
-	 	
-	 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
-	 
-		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-		gl.vertexAttribPointer(shaderProgram_q.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-	 
-		gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
-		gl.vertexAttribPointer(shaderProgram_q.vertexTexcoordAttribute, squareTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
-	 
-		setMatrixUniforms();
-	 	
-	 	gl.drawElements(gl.TRIANGLES, squareIndicesBuffer.num, gl.UNSIGNED_SHORT, 0);
-	 	
-		mvPopMatrix();
-	 	
-	 	gl.disableVertexAttribArray(shaderProgram_q.vertexPositionAttribute);
-	 	gl.disableVertexAttribArray(shaderProgram_q.vertexTexcoordAttribute);
+		
+		if (useRTT && rttFramebuffer) {
+			// Шаг 1: Рендерим потенциал в текстуру
+			gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
+			gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+			gl.clear(gl.COLOR_BUFFER_BIT);
+			
+			mvPushMatrix();
+			mat4.rotate(mvMatrix, mvMatrix, degToRad(rSquare), [1, 0, 0]);
+			
+			gl.useProgram(shaderProgram_rtt_compute);
+			gl.enableVertexAttribArray(shaderProgram_rtt_compute.vertexPositionAttribute);
+			gl.enableVertexAttribArray(shaderProgram_rtt_compute.vertexTexcoordAttribute);
+			
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+			gl.vertexAttribPointer(shaderProgram_rtt_compute.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
+			gl.vertexAttribPointer(shaderProgram_rtt_compute.vertexTexcoordAttribute, squareTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+			
+			// Передаем uniforms
+			gl.uniformMatrix4fv(shaderProgram_rtt_compute.pMatrixUniform, false, pMatrix);
+			gl.uniformMatrix4fv(shaderProgram_rtt_compute.mvMatrixUniform, false, mvMatrix);
+			gl.uniform2fv(shaderProgram_rtt_compute.mSZUniform, map.mSZ);
+			gl.uniform1i(shaderProgram_rtt_compute.num_QUniform, map.mQ.length);
+			for( var i=0; i < map.mQ.length; ++i){
+				gl.uniform4fv(gl.getUniformLocation(shaderProgram_rtt_compute, "mQ["+i+"]"), map.mQ[i]);
+			}
+			
+			gl.drawElements(gl.TRIANGLES, squareIndicesBuffer.num, gl.UNSIGNED_SHORT, 0);
+			
+			gl.disableVertexAttribArray(shaderProgram_rtt_compute.vertexPositionAttribute);
+			gl.disableVertexAttribArray(shaderProgram_rtt_compute.vertexTexcoordAttribute);
+			
+			mvPopMatrix();
+			
+			// Шаг 2: Рендерим из текстуры на экран
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+			
+			mvPushMatrix();
+			mat4.rotate(mvMatrix, mvMatrix, degToRad(rSquare), [1, 0, 0]);
+			
+			gl.useProgram(shaderProgram_rtt_display);
+			gl.enableVertexAttribArray(shaderProgram_rtt_display.vertexPositionAttribute);
+			gl.enableVertexAttribArray(shaderProgram_rtt_display.vertexTexcoordAttribute);
+			
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+			gl.vertexAttribPointer(shaderProgram_rtt_display.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
+			gl.vertexAttribPointer(shaderProgram_rtt_display.vertexTexcoordAttribute, squareTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+			
+			// Передаем uniforms
+			gl.uniformMatrix4fv(shaderProgram_rtt_display.pMatrixUniform, false, pMatrix);
+			gl.uniformMatrix4fv(shaderProgram_rtt_display.mvMatrixUniform, false, mvMatrix);
+			gl.uniform1i(shaderProgram_rtt_display.num_PhiUniform, map.mPhi.length);
+			for( var i=0; i < map.mPhi.length; ++i){
+				gl.uniform1f(gl.getUniformLocation(shaderProgram_rtt_display, "mPhi["+i+"]"), map.mPhi[i]);
+			}
+			gl.uniform1f(shaderProgram_rtt_display.prec_phiUniform, map.prec_phi);
+			gl.uniform1f(shaderProgram_rtt_display.compressionUniform, map.compression);
+			gl.uniform1i(shaderProgram_rtt_display.paletteUniform, map.palette);
+			
+			// Привязываем текстуру
+			gl.activeTexture(gl.TEXTURE0);
+			gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+			gl.uniform1i(shaderProgram_rtt_display.potentialTextureUniform, 0);
+			
+			gl.drawElements(gl.TRIANGLES, squareIndicesBuffer.num, gl.UNSIGNED_SHORT, 0);
+			
+			gl.disableVertexAttribArray(shaderProgram_rtt_display.vertexPositionAttribute);
+			gl.disableVertexAttribArray(shaderProgram_rtt_display.vertexTexcoordAttribute);
+			
+			mvPopMatrix();
+			
+		} else {
+			// Старый прямой метод
+			mvPushMatrix();
+			mat4.rotate(mvMatrix, mvMatrix, degToRad(rSquare), [1, 0, 0]);
+			
+			gl.useProgram(shaderProgram_q);
+			gl.enableVertexAttribArray(shaderProgram_q.vertexPositionAttribute);
+			gl.enableVertexAttribArray(shaderProgram_q.vertexTexcoordAttribute);
+			
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndicesBuffer);
+		
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+			gl.vertexAttribPointer(shaderProgram_q.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareTexcoordBuffer);
+			gl.vertexAttribPointer(shaderProgram_q.vertexTexcoordAttribute, squareTexcoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		
+			setMatrixUniforms();
+			
+			gl.drawElements(gl.TRIANGLES, squareIndicesBuffer.num, gl.UNSIGNED_SHORT, 0);
+			
+			mvPopMatrix();
+			
+			gl.disableVertexAttribArray(shaderProgram_q.vertexPositionAttribute);
+			gl.disableVertexAttribArray(shaderProgram_q.vertexTexcoordAttribute);
+		}
 		
 		
 		
@@ -862,8 +1170,9 @@ $(function(){
 		canvas.height = map.mSZ[1];
 		
 		initGL(canvas);
-		initShaders()
+		initShaders();
 		initBuffers();
+		initRTT();
 		
 		map_init();
 
@@ -1198,6 +1507,10 @@ $(function(){
 		return false;
 	});
 	
+	$('#rtt_switch').on( "slidestop", function( event, ui ) {
+		useRTT = $(this).val() == 'on';
+	});
+	
 	$('#palette_select').on( "change", function( event, ui ) {
 		map.palette = parseInt($(this).val());
 	});
@@ -1334,6 +1647,13 @@ div.inline_flip{
 			<h1>Visualization Settings</h1>
 		</div>
 		<div data-role="content" data-theme="d" class="ui-corner-bottom ui-content">
+			<div data-role="fieldcontain">
+				<label for="rtt_switch">Use Render-to-Texture:</label>
+				<select name="rtt_switch" id="rtt_switch" data-role="slider" data-mini="true">
+					<option value="off">Off</option>
+					<option value="on">On</option>
+				</select>
+			</div>
 			<div data-role="fieldcontain">
 				<label for="palette_select">Color Palette:</label>
 				<select name="palette_select" id="palette_select" data-mini="true">
