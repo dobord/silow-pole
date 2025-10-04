@@ -44,29 +44,99 @@
 	// параметр компрессии для визуализации
 	uniform float compression;	// [0.1 - 2.0], default = 1.0
 	
+	// выбор палитры (0 = classic, 1 = heat, 2 = cool, 3 = rainbow)
+	uniform int palette;
+	
 	varying vec2 vTexcoord;
 	
+	
+	// Classic palette (red-blue)
+	vec4 palette_classic(float phi) {
+		vec4 color;
+		if (phi>0.0)
+		{
+			if(phi>1.0)
+				color = vec4(1.0,1.0-1.0/phi,0.0,1.0);
+			else
+				color = vec4(phi,0.0,0.0,1.0);	
+		}
+		else
+		{
+			if(phi<-1.0)
+				color = vec4(0.0,1.0+1.0/phi,1.0,1.0);
+			else
+				color = vec4(0.0,0.0,-phi,1.0);
+		}
+		return color;
+	}
+	
+	// Heat palette (black-red-yellow-white)
+	vec4 palette_heat(float phi) {
+		float t = (phi + 2.0) / 4.0; // normalize to [0,1]
+		t = clamp(t, 0.0, 1.0);
+		
+		vec4 color;
+		if (t < 0.33) {
+			float s = t / 0.33;
+			color = vec4(s, 0.0, 0.0, 1.0);
+		} else if (t < 0.66) {
+			float s = (t - 0.33) / 0.33;
+			color = vec4(1.0, s, 0.0, 1.0);
+		} else {
+			float s = (t - 0.66) / 0.34;
+			color = vec4(1.0, 1.0, s, 1.0);
+		}
+		return color;
+	}
+	
+	// Cool palette (cyan-blue-purple)
+	vec4 palette_cool(float phi) {
+		float t = (phi + 2.0) / 4.0;
+		t = clamp(t, 0.0, 1.0);
+		
+		return vec4(t, 1.0 - t, 1.0, 1.0);
+	}
+	
+	// Rainbow palette
+	vec4 palette_rainbow(float phi) {
+		float t = (phi + 2.0) / 4.0;
+		t = clamp(t, 0.0, 1.0);
+		t = t * 6.0;
+		
+		vec4 color;
+		if (t < 1.0) {
+			color = vec4(1.0, t, 0.0, 1.0);
+		} else if (t < 2.0) {
+			color = vec4(2.0 - t, 1.0, 0.0, 1.0);
+		} else if (t < 3.0) {
+			color = vec4(0.0, 1.0, t - 2.0, 1.0);
+		} else if (t < 4.0) {
+			color = vec4(0.0, 4.0 - t, 1.0, 1.0);
+		} else if (t < 5.0) {
+			color = vec4(t - 4.0, 0.0, 1.0, 1.0);
+		} else {
+			color = vec4(1.0, 0.0, 6.0 - t, 1.0);
+		}
+		return color;
+	}
 	
 	vec4 phi2vec4(float phi)
 	{
 		// Применяем компрессию к потенциалу
 		float compressed_phi = sign(phi) * pow(abs(phi), compression);
 		
+		// Выбираем палитру
 		vec4 color;
-		if (compressed_phi>0.0)
-		{
-			if(compressed_phi>1.0)
-				color = vec4(1.0,1.0-1.0/compressed_phi,0.0,1.0);
-			else
-				color = vec4(compressed_phi,0.0,0.0,1.0);	
+		if (palette == 1) {
+			color = palette_heat(compressed_phi);
+		} else if (palette == 2) {
+			color = palette_cool(compressed_phi);
+		} else if (palette == 3) {
+			color = palette_rainbow(compressed_phi);
+		} else {
+			color = palette_classic(compressed_phi);
 		}
-		else
-		{
-			if(compressed_phi<-1.0)
-				color = vec4(0.0,1.0+1.0/compressed_phi,1.0,1.0);
-			else
-				color = vec4(0.0,0.0,-compressed_phi,1.0);
-		}			   
+		
 		return color;
 	}
 
@@ -295,6 +365,7 @@ $(function(){
 		shaderProgram_q.num_PhiUniform = gl.getUniformLocation(shaderProgram_q, "num_Phi");
 		shaderProgram_q.prec_phiUniform = gl.getUniformLocation(shaderProgram_q, "prec_phi");
 		shaderProgram_q.compressionUniform = gl.getUniformLocation(shaderProgram_q, "compression");
+		shaderProgram_q.paletteUniform = gl.getUniformLocation(shaderProgram_q, "palette");
 		
 		//	шейдер-программа для простого рисования
 		
@@ -348,7 +419,8 @@ $(function(){
 		mPhi		: [],
 		prec_phi	: 0.05,	//	умалчиваемая точнось экв. пот. поверхностей
 		is_show_line: false,
-		compression	: 1.0	//	параметр компрессии визуализации (0.1 - 2.0)
+		compression	: 1.0,	//	параметр компрессии визуализации (0.1 - 2.0)
+		palette		: 0		//	палитра (0=classic, 1=heat, 2=cool, 3=rainbow)
 	};
 
 	function mvPushMatrix() {
@@ -379,6 +451,7 @@ $(function(){
 		}
 		gl.uniform1f(shaderProgram_q.prec_phiUniform, map.prec_phi);
 		gl.uniform1f(shaderProgram_q.compressionUniform, map.compression);
+		gl.uniform1i(shaderProgram_q.paletteUniform, map.palette);
 	}
 
 
@@ -1125,6 +1198,10 @@ $(function(){
 		return false;
 	});
 	
+	$('#palette_select').on( "change", function( event, ui ) {
+		map.palette = parseInt($(this).val());
+	});
+	
 	$('#compression_slider').on( "change", function( event, ui ) {
 		map.compression = parseFloat($(this).val());
 		$('#compression_value').text(map.compression.toFixed(2));
@@ -1257,6 +1334,15 @@ div.inline_flip{
 			<h1>Visualization Settings</h1>
 		</div>
 		<div data-role="content" data-theme="d" class="ui-corner-bottom ui-content">
+			<div data-role="fieldcontain">
+				<label for="palette_select">Color Palette:</label>
+				<select name="palette_select" id="palette_select" data-mini="true">
+					<option value="0">Classic (Red-Blue)</option>
+					<option value="1">Heat (Black-Red-Yellow)</option>
+					<option value="2">Cool (Cyan-Blue-Purple)</option>
+					<option value="3">Rainbow</option>
+				</select>
+			</div>
 			<div data-role="fieldcontain">
 				<label for="compression_slider">Compression (0.1 - 2.0):</label>
 				<input name="compression_slider" id="compression_slider" value="1.0" min="0.1" max="2.0" step="0.05" type="range" data-highlight="true">
