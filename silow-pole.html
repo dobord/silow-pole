@@ -1060,25 +1060,84 @@ $(function(){
 		
 			gl.useProgram(shaderProgram_std);
 			
+			/**
+			 * Вычисление электрического поля в точке
+			 */
+			function calcField(pos, q_sign) {
+				var field = vec2.create();
+				var d = vec2.create();
+				var e1 = vec2.create();
+				
+				for( var l=0; l < map.mQ.length; ++l){
+					vec2.sub( d, pos, map.mQ[l] );
+					var dl = vec2.length(d);
+					if (dl < 0.01) dl = 0.01; // избегаем деления на ноль
+					vec2.scale( e1, d, q_sign*map.mQ[l][2]/(dl*dl*dl) );
+					vec2.add( field, field, e1 );
+				}
+				
+				return field;
+			}
+			
+			/**
+			 * RK4 интегрирование
+			 */
+			function rk4Step(pos, q_sign, h) {
+				var k1 = calcField(pos, q_sign);
+				vec2.normalize(k1, k1);
+				
+				var temp = vec2.create();
+				vec2.scale(temp, k1, h/2);
+				vec2.add(temp, pos, temp);
+				var k2 = calcField(temp, q_sign);
+				vec2.normalize(k2, k2);
+				
+				vec2.scale(temp, k2, h/2);
+				vec2.add(temp, pos, temp);
+				var k3 = calcField(temp, q_sign);
+				vec2.normalize(k3, k3);
+				
+				vec2.scale(temp, k3, h);
+				vec2.add(temp, pos, temp);
+				var k4 = calcField(temp, q_sign);
+				vec2.normalize(k4, k4);
+				
+				var result = vec2.create();
+				vec2.scale(result, k1, 1/6);
+				vec2.scale(temp, k2, 1/3);
+				vec2.add(result, result, temp);
+				vec2.scale(temp, k3, 1/3);
+				vec2.add(result, result, temp);
+				vec2.scale(temp, k4, 1/6);
+				vec2.add(result, result, temp);
+				
+				vec2.scale(result, result, h);
+				vec2.add(result, pos, result);
+				
+				return result;
+			}
+			
+			/**
+			 * Проверка близости к зарядам
+			 */
+			function isNearCharge(pos, kill_zone) {
+				for( var l=0; l < map.mQ.length; ++l){
+					if( vec2.squaredDistance( pos, map.mQ[l] ) < kill_zone*kill_zone  ){
+						return true;
+					}
+				}
+				return false;
+			}
+			
 			//	позиция точки на силовой линии
 			var p = vec2.create();
+			var p_next = vec2.create();
 			
-			//	смещение от заряда до точки
-			var d = vec2.create();
-			
-			//	напряженность электрического поля в точке
-			var e = vec2.create();
-			
-			//	напряжённость от одного заряда
-			var e1 = vec2.create();
-			
-			var dl;
-			
-			var step = 5;
+			var base_step = 5;
 			var kill_zone = 4;
 			var line_break;
 			
-			var color = vec4.fromValues(1,1,1,0.1);
+			var color = vec4.fromValues(1,1,1,0.15);
 
 			//	цикл по зарядам
 			for( var i = 0 ; i < map.mQ.length; ++i ){
@@ -1093,38 +1152,43 @@ $(function(){
 						s = Math.sin(rad),
 						c = Math.cos(rad);
 						
-					vec2.set( p, map.mQ[i][0] + c*step, map.mQ[i][1] + s*step );
+					vec2.set( p, map.mQ[i][0] + c*base_step, map.mQ[i][1] + s*base_step );
 					
 					line_break = false;
 					
 					//	цикл по точкам силовой линии
-					for( var k = 0; k<200; ++k ){
+					for( var k = 0; k<300; ++k ){
 					
-						vec2.set( e, 0, 0 );
-						
-						//	цикл по зарядам
-						for( var l=0; l < map.mQ.length; ++l){
-						
-							vec2.sub( d, p, map.mQ[l] );
-							dl = vec2.length(d);
-							vec2.scale( e1, d, q*map.mQ[l][2]/(dl*dl*dl) );
-							vec2.add( e, e, e1 );
-							
-							if( vec2.squaredDistance( p, map.mQ[l] ) < kill_zone*kill_zone  ){
-								line_break = true;
-								break;
-							}
-							
+						if( isNearCharge(p, kill_zone) ){
+							line_break = true;
+							break;
 						}
+						
+						// Адаптивный шаг: уменьшаем вблизи зарядов
+						var minDist = Infinity;
+						for( var l=0; l < map.mQ.length; ++l){
+							var dist = vec2.distance(p, map.mQ[l]);
+							minDist = Math.min(minDist, dist);
+						}
+						
+						var adaptiveStep = base_step;
+						if (minDist < 50) {
+							adaptiveStep = base_step * (minDist / 50);
+							adaptiveStep = Math.max(adaptiveStep, 1);
+						}
+						
+						// RK4 интегрирование
+						p_next = rk4Step(p, q, adaptiveStep);
+						
+						if( isNearCharge(p_next, kill_zone) ){
+							line_break = true;
+						}
+						
+						lineBuffer.draw_line( p, p_next, color, 2 );
+						vec2.copy( p, p_next );
 						
 						if( line_break )
 							break;
-						
-						vec2.normalize( e1, e );
-						vec2.scale( e1, e1, step );
-						vec2.add( e1, e1, p );
-						lineBuffer.draw_line( p, e1, color, 2 );
-						vec2.copy( p, e1 );
 					
 					}
 				
